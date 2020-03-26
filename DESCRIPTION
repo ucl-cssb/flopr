@@ -1,0 +1,28 @@
+Package: fluncR
+Type: Package
+Title: A package for the normalisation and calibration of flow cytometry and plate reader spectrophotometry data
+Version: 0.1.0
+Authors@R: person("Fedorec", "Alex J H", , "alexander.fedorec.13@ucl.ac.uk", c("aut", "cre"))
+Author: Alex J H Fedorec [aut, cre]
+Maintainer: Alex J H Fedorec <alexander.fedorec.13@ucl.ac.uk>
+Description: something
+URL: https://github.com/ucl-cssb/fluncR
+BugReports: https://github.com/ucl-cssb/fluncR/issues
+License: GPL-3
+Encoding: UTF-8
+LazyData: true
+Imports:
+  flowClust,
+  flowCore,
+  flowStats,
+  ggplot2,
+  gridExtra,
+  grid,
+  gtable,
+  stats,
+  utils,
+  dplyr,
+  rlang,
+  tidyr,
+  broom
+RoxygenNote: 7.1.0
