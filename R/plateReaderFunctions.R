@@ -6,7 +6,7 @@
 #' @param od_name the column name for the optical density data
 #' @param flu_names the column names for the fluorscence data
 #' @param af_model model used to fit negative control autofluorescence.
-#' For now these include "polynomial", "invers_poly", or "exponential".
+#' For now these include "polynomial", "invers_poly", "exponential", or "loess".
 #' @param to_MEFL a Boolean to determine whether to attempt to convert OD and
 #' GFP reading to calibrated units
 #' @param GFP_gain if to_MEFL=T, the gain value at which GFP was recorded
@@ -82,7 +82,7 @@ process_plate <- function(pr_data, blank_well = "A1", neg_well = "A2",
 #' @param OD_name the column name for the optical density data
 #' @param flu_names the column names for the fluorscence data
 #' @param af_model model used to fit negative control autofluorescence.
-#' For now these include "polynomial", "invers_poly", or "exponential".
+#' For now these include "polynomial", "invers_poly", "exponential", or "loess".
 #' @param to_MEFL a Boolean to determine whether to attempt to convert OD and
 #' GFP reading to calibrated units
 #' @param GFP_gain if to_MEFL=T, the gain value at which GFP was recorded
@@ -137,7 +137,7 @@ od_norm <- function(pr_data, blank_well, od_name) {
 #' @param blank_well the well coordinates of a media blank
 #' @param flu_name the column name of the fluorescence chanel to normalise
 #' @param af_model model used to fit negative control autofluorescence.
-#' For now these include "polynomial", "invers_poly", or "exponential".
+#' For now these include "polynomial", "invers_poly", "exponential", or "loess".
 #'
 #' @return
 #'
@@ -212,7 +212,7 @@ flu_norm <- function(pr_data, neg_well, blank_well, flu_name, af_model) {
   } else if (af_model == "linear_power") {
     ## ax + bx^c + d
     model_01 <- stats::lm(v1 ~ normalised_OD, data = negative_data)
-    model_02 <- lm(log(v1) ~ log(normalised_OD), data = negative_data)
+    model_02 <- stats::lm(log(v1) ~ log(normalised_OD), data = negative_data)
     start <- list(a = stats::coef(model_01)[2],
                   b = exp(stats::coef(model_02)[1]),
                   c = stats::coef(model_02)[2],
@@ -221,13 +221,18 @@ flu_norm <- function(pr_data, neg_well, blank_well, flu_name, af_model) {
     model <- stats::nls(v1 ~ (a * normalised_OD + b * normalised_OD ^ c + d),
                         start = start,
                         data = negative_data)
+  } else if (af_model == "loess") {
+    model <- stats::loess(v1 ~ normalised_OD,
+                          data = negative_data,
+                          span = 0.5)
   }
 
   # plot model fit curves ---------------------------------------------------
 
   if (af_model == "polynomial" | af_model == "power" |
       af_model == "exponential" | af_model == "bi_exponential" |
-      af_model == "linear_exponential" | af_model == "linear_power") {
+      af_model == "linear_exponential" | af_model == "linear_power" |
+      af_model == "loess") {
     plt <- ggplot2::ggplot() +
       ggplot2::geom_line(ggplot2::aes(x = negative_data$normalised_OD,
                                       y = stats::predict(model,
@@ -262,7 +267,8 @@ flu_norm <- function(pr_data, neg_well, blank_well, flu_name, af_model) {
 
   if (af_model == "polynomial" | af_model == "power" |
       af_model == "exponential" | af_model == "bi_exponential" |
-      af_model == "linear_exponential" | af_model == "linear_power") {
+      af_model == "linear_exponential" | af_model == "linear_power" |
+      af_model == "loess") {
     pr_data$v1 <- pr_data$v1 - stats::predict(model, pr_data)
   } else if (af_model == "inverse_poly") {
     pr_data$v1 <- pr_data$v1 - ((- (stats::coef(model)[1]) +

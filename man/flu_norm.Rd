@@ -17,7 +17,7 @@ normalised}
 \item{flu_name}{the column name of the fluorescence chanel to normalise}
 
 \item{af_model}{model used to fit negative control autofluorescence.
-For now these include "polynomial", "invers_poly", or "exponential".}
+For now these include "polynomial", "invers_poly", "exponential", or "loess".}
 }
 \value{
 
