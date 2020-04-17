@@ -78,8 +78,8 @@ process_fcs <- function(fcs_file, flu_channels=c("BL1-H"), do_plot = F,
 #' files and plot if \code{do_plot = TRUE}.
 #' @export
 process_fcs_dir <- function(dir_path, pattern = "*.fcs", flu_channels=c("BL1-H"),
-                     do_plot = F, pre_cleaned = F, calibrate = F,
-                     mef_peaks = NA, bead_dens_bw = 0.025, manual_peaks = NA) {
+                            do_plot = F, pre_cleaned = F, calibrate = F,
+                            mef_peaks = NA, bead_dens_bw = 0.025, manual_peaks = NA) {
   ## Create directory for trimmed flowFrames
   if (!dir.exists(paste(dir_path, "trimmed", sep = "_"))) {
     dir.create(paste(dir_path, "trimmed", sep = "_"), recursive = T)
@@ -87,10 +87,17 @@ process_fcs_dir <- function(dir_path, pattern = "*.fcs", flu_channels=c("BL1-H")
 
   if (calibrate) {
     ## First step is to get calibration standard curves
-    bead_file <- unlist(list.files(path = dir_path,
-                                   pattern = utils::glob2rx("*beads*.fcs"),
-                                   full.names = T, recursive = T, include.dirs = T))
-    if (length(bead_file) < 4) {
+    bead_files <- list.files(path = dir_path,
+                             pattern = utils::glob2rx("*beads*.fcs"),
+                             full.names = T, recursive = T, include.dirs = T)
+
+    if(length(bead_files) > 1){
+      warning("More than one beads file found.")
+      bead_file <- bead_files[1]
+
+    } else if(length(bead_files) == 1){
+      bead_file <- bead_files[1]
+    } else {
       stop("No beads file found.")
     }
 
