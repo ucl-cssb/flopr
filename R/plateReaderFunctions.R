@@ -334,34 +334,32 @@ calibrate_plate <- function(pr_data, lid, gfp_gain, od_name, conversion_factors_
 
   gfp_cfs$measure <- as.numeric(gsub("Gain ", "", gfp_cfs$measure))
 
-  if (length(which(gfp_cfs$measure == gfp_gain)) > 0) {
-    gfp_cf <- gfp_cfs[which(gfp_cfs$measure == gfp_gain), ]$slope
-  } else {
-    model <- stats::lm(log10(slope) ~ poly(measure, 2), data = gfp_cfs)
-
-    gfp_cf <- 10 ^ stats::predict(model, data.frame(measure = gfp_gain))
-
-    ggplot2::ggplot() +
-      ggplot2::geom_line(ggplot2::aes(x = gfp_cfs$measure,
-                                      y = 10^stats::predict(model, gfp_cfs))) +
-      ggplot2::geom_point(ggplot2::aes(x = gfp_cfs$measure,
-                                       y = gfp_cfs$slope)) +
-      ggplot2::geom_vline(xintercept = gfp_gain, linetype = 2) +
-      ggplot2::geom_hline(yintercept = 10 ^ stats::predict(model, data.frame(measure = gfp_gain)),
-                          linetype = 2) +
-      ggplot2::geom_point(ggplot2::aes(x = gfp_gain,
-                                       y = 10 ^ stats::predict(model, data.frame(measure = gfp_gain))),
-                          colour = "red", shape = 1, size = 2) +
-      ggplot2::scale_x_continuous("Gain") +
-      ggplot2::scale_y_continuous("Conversion factor (MEFL/a.u.)",
-                                  trans = "log10") +
-      ggplot2::theme_bw()
-  }
+  # Fit cf to Gain relation to get cf for specific gain ---------------------
+   model <- stats::lm(log10(slope) ~ poly(measure, 2), data = gfp_cfs)
+   gfp_cf <- 10 ^ stats::predict(model, data.frame(measure = gfp_gain))
+   ggplot2::ggplot() +
+     ggplot2::geom_line(ggplot2::aes(x = gfp_cfs$measure,
+                                     y = 10^stats::predict(model, gfp_cfs))) +
+     ggplot2::geom_point(ggplot2::aes(x = gfp_cfs$measure,
+                                      y = gfp_cfs$slope)) +
+     ggplot2::geom_vline(xintercept = gfp_gain, linetype = 2) +
+     ggplot2::geom_hline(yintercept = 10 ^ stats::predict(model, data.frame(measure = gfp_gain)),
+                         linetype = 2) +
+     ggplot2::geom_point(ggplot2::aes(x = gfp_gain,
+                                      y = 10 ^ stats::predict(model, data.frame(measure = gfp_gain))),
+                         colour = "red", shape = 1, size = 2) +
+     ggplot2::scale_x_continuous("Gain") +
+     ggplot2::scale_y_continuous("Conversion factor (MEFL/a.u.)",
+                                 trans = "log10") +
+     ggplot2::theme_bw()
+  
 
   pr_data$calibrated_OD <- pr_data$normalised_OD / od_cf
 
   MFL_per_uM <- 6.02e13 #MEFL/uM fluorescein (value from Jacob Beal's iGEM conversion excel spreadsheet)
   pr_data$calibrated_GFP <- (pr_data$normalised_GFP / gfp_cf) * MFL_per_uM
+
+  pr_data$MEFL_per_particle <- (pr_data$calibrated_GFP)/(pr_data$calibrated_OD)
 
   return(pr_data)
 }
@@ -372,6 +370,8 @@ calibrate_plate <- function(pr_data, lid, gfp_gain, od_name, conversion_factors_
 #' is held
 #' @param date input date as YYYYMMDD on which calibration was carried out.
 #' n.b. this should also be the name of the folder holding the csv files
+#' @param microsphere_vals a vector containing which microsphere concentrations 
+#' should be used (for ex. default is c(4,12) which uses the 8 highest concentrations)
 #'
 #' @return saves a csv data frame with the conversion factors and two png plots
 #' of the conversion factors (for Absorbance and fluorescence)
@@ -379,7 +379,7 @@ calibrate_plate <- function(pr_data, lid, gfp_gain, od_name, conversion_factors_
 #' @export
 #' @importFrom dplyr %>%
 #' @importFrom rlang .data
-generate_cfs <- function(calibration_dir, date) {
+generate_cfs <- function(calibration_dir, date, microsphere_vals = c(4,12)) {
   csv_files <- c("film.csv", "nolid.csv")
   plate_layout <- utils::read.csv(paste(calibration_dir,
                                         "calibration_plate_layout.csv",
@@ -440,14 +440,16 @@ generate_cfs <- function(calibration_dir, date) {
 
   # normalise data ----------------------------------------------------------
 
+  unique_microsphere_concs <- unique(subset(summ_values, Calibrant=='microspheres')[['concentration']]) #get the range of microsphere concentrations
+	used_microsphere_concs <- unique_microsphere_concs[microsphere_vals[1]:microsphere_vals[2]] #use the range of concentrations specified by user 
   norm_values <- summ_values %>%
-    dplyr::group_by(.data$measure, .data$Calibrant, .data$lid_type) %>%
-    dplyr::mutate(normalised_value = .data$mean_value -
-                    .data$mean_value[.data$concentration == 0]) %>%
-    dplyr::filter(((.data$Calibrant == "fluorescein") &
-                     (.data$concentration != 0)) |             # exclude fluorescein concentration of 0 to avoid dividing by 0
-                    ((.data$Calibrant == "microspheres") &
-                       (.data$concentration > 8.139678e6)))  # only take the top 8 data points to avoid low concentration variability
+  dplyr::group_by(.data$measure, .data$Calibrant, .data$lid_type) %>%
+  dplyr::mutate(normalised_value = .data$mean_value -
+                  .data$mean_value[.data$concentration == 0]) %>%
+  dplyr::filter(((.data$Calibrant == "fluorescein") &
+                   (.data$concentration != 0)) |             # exclude fluorescein concentration of 0 to avoid dividing by 0
+                  ((.data$Calibrant == "microspheres") &
+                     (.data$concentration %in% used_microsphere_concs)))  # only take the top 8 data points to avoid low concentration variability
 
   # fit linear models to the normalised data  --------
 
