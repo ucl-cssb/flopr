@@ -323,7 +323,7 @@ calibrate_plate <- function(pr_data, lid, gfp_gain, od_name, conversion_factors_
   od_cf <- unlist(conversion_factors %>%
                     dplyr::filter(.data$measure == od_name) %>%
                     dplyr::filter(.data$lid_type == lid) %>%
-                    dplyr::select(.data$slope))
+                    dplyr::select(.data$cf))
 
 
   # Get conversion factor for GFP -------------------------------------------
@@ -335,7 +335,7 @@ calibrate_plate <- function(pr_data, lid, gfp_gain, od_name, conversion_factors_
   gfp_cfs$measure <- as.numeric(gsub("Gain ", "", gfp_cfs$measure))
 
   # Fit cf to Gain relation to get cf for specific gain ---------------------
-   model <- stats::lm(log10(slope) ~ poly(measure, 2), data = gfp_cfs)
+   model <- stats::lm(log10(cf) ~ poly(measure, 2), data = gfp_cfs)
    gfp_cf <- 10 ^ stats::predict(model, data.frame(measure = gfp_gain))
    ggplot2::ggplot() +
      ggplot2::geom_line(ggplot2::aes(x = gfp_cfs$measure,
@@ -455,13 +455,13 @@ generate_cfs <- function(calibration_dir, date, microsphere_vals = c(4,12)) {
 
   fit_values <- norm_values %>%
     dplyr::group_by(.data$lid_type, .data$measure, .data$Calibrant) %>%
-    dplyr::do(broom::tidy(stats::lm(normalised_value~concentration,
-                                    data = .data))) %>%  # fit linear model (lm) and extract coefficients (broom::tidy)
+    dplyr::do(broom::tidy(stats::lm(log10(normalised_value)~log10(concentration),
+                                    data = .data))) %>%  # fit linear model (lm) on log scale and extract coefficients (broom::tidy)
     dplyr::select(1:5) %>%                                                   # only keep useful columns
-    tidyr::spread(.data$term, .data$estimate) %>%                                        # spread the data so we have a column for intercept coeffs and one for slope coeffs
-    dplyr::rename("intercept" = .data$`(Intercept)`,
-                  "slope" = .data$concentration)
-
+    tidyr::spread(.data$term, .data$estimate) %>%                            # spread the data so we have a column for intercept coeffs and one for slope coeffs
+    dplyr::mutate("cf" = 10^(.data$`(Intercept)`),
+                  "slope" = .data$`log10(concentration)`)%>%
+    dplyr::select(lid_type, measure, Calibrant, cf, slope)
 
   # plot the mean normalized values -----------------------------------------
 
@@ -479,7 +479,8 @@ generate_cfs <- function(calibration_dir, date, microsphere_vals = c(4,12)) {
 
   ggplot2::ggsave(paste(calibration_dir, date,
                         "Absorbance_conversion_factors.pdf", sep = "/"),
-                  plot = abs_plt)
+                  plot = abs_plt,
+                  width = 12, height = 12, units = "cm")
 
   flu_plt <-
     ggplot2::ggplot(data = norm_values %>%
