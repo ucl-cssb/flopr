@@ -323,7 +323,7 @@ calibrate_plate <- function(pr_data, lid, gfp_gain, od_name, conversion_factors_
   od_cf <- unlist(conversion_factors %>%
                     dplyr::filter(.data$measure == od_name) %>%
                     dplyr::filter(.data$lid_type == lid) %>%
-                    dplyr::select(.data$slope))
+                    dplyr::select(.data$Sp))
 
 
   # Get conversion factor for GFP -------------------------------------------
@@ -335,24 +335,24 @@ calibrate_plate <- function(pr_data, lid, gfp_gain, od_name, conversion_factors_
   gfp_cfs$measure <- as.numeric(gsub("Gain ", "", gfp_cfs$measure))
 
   # Fit cf to Gain relation to get cf for specific gain ---------------------
-   model <- stats::lm(log10(slope) ~ poly(measure, 2), data = gfp_cfs)
-   gfp_cf <- 10 ^ stats::predict(model, data.frame(measure = gfp_gain))
-   ggplot2::ggplot() +
-     ggplot2::geom_line(ggplot2::aes(x = gfp_cfs$measure,
-                                     y = 10^stats::predict(model, gfp_cfs))) +
-     ggplot2::geom_point(ggplot2::aes(x = gfp_cfs$measure,
-                                      y = gfp_cfs$slope)) +
-     ggplot2::geom_vline(xintercept = gfp_gain, linetype = 2) +
-     ggplot2::geom_hline(yintercept = 10 ^ stats::predict(model, data.frame(measure = gfp_gain)),
-                         linetype = 2) +
-     ggplot2::geom_point(ggplot2::aes(x = gfp_gain,
-                                      y = 10 ^ stats::predict(model, data.frame(measure = gfp_gain))),
-                         colour = "red", shape = 1, size = 2) +
-     ggplot2::scale_x_continuous("Gain") +
-     ggplot2::scale_y_continuous("Conversion factor (MEFL/a.u.)",
-                                 trans = "log10") +
-     ggplot2::theme_bw()
-  
+  model <- stats::lm(log10(Sp) ~ poly(measure, 2), data = gfp_cfs)
+  gfp_cf <- 10 ^ stats::predict(model, data.frame(measure = gfp_gain))
+  ggplot2::ggplot() +
+    ggplot2::geom_line(ggplot2::aes(x = gfp_cfs$measure,
+                                    y = 10^stats::predict(model, gfp_cfs))) +
+    ggplot2::geom_point(ggplot2::aes(x = gfp_cfs$measure,
+                                     y = gfp_cfs$Sp)) +
+    ggplot2::geom_vline(xintercept = gfp_gain, linetype = 2) +
+    ggplot2::geom_hline(yintercept = 10 ^ stats::predict(model, data.frame(measure = gfp_gain)),
+                        linetype = 2) +
+    ggplot2::geom_point(ggplot2::aes(x = gfp_gain,
+                                     y = 10 ^ stats::predict(model, data.frame(measure = gfp_gain))),
+                        colour = "red", shape = 1, size = 2) +
+    ggplot2::scale_x_continuous("Gain") +
+    ggplot2::scale_y_continuous("Conversion factor (MEFL/a.u.)",
+                                trans = "log10") +
+    ggplot2::theme_bw()
+
 
   pr_data$calibrated_OD <- pr_data$normalised_OD / od_cf
 
@@ -370,8 +370,6 @@ calibrate_plate <- function(pr_data, lid, gfp_gain, od_name, conversion_factors_
 #' is held
 #' @param date input date as YYYYMMDD on which calibration was carried out.
 #' n.b. this should also be the name of the folder holding the csv files
-#' @param microsphere_vals a vector containing which microsphere concentrations 
-#' should be used (for ex. default is c(4,12) which uses the 8 highest concentrations)
 #'
 #' @return saves a csv data frame with the conversion factors and two png plots
 #' of the conversion factors (for Absorbance and fluorescence)
@@ -379,13 +377,14 @@ calibrate_plate <- function(pr_data, lid, gfp_gain, od_name, conversion_factors_
 #' @export
 #' @importFrom dplyr %>%
 #' @importFrom rlang .data
-generate_cfs <- function(calibration_dir, date, microsphere_vals = c(4,12)) {
+generate_cfs <- function(calibration_dir, date) {
   csv_files <- c("film.csv", "nolid.csv")
   plate_layout <- utils::read.csv(paste(calibration_dir,
                                         "calibration_plate_layout.csv",
                                         sep = "/"))
 
   # parse data --------------------------------------------------------------
+
   all_values <- c()
   for (csv_file in csv_files) {
     csv_data <- utils::read.table(paste(calibration_dir, date, csv_file,
@@ -416,20 +415,12 @@ generate_cfs <- function(calibration_dir, date, microsphere_vals = c(4,12)) {
       all_values <- rbind(all_values, joined_block)  # add to all data
     }
   }
-
-  # remove saturating values and calculate mean of 4 replicates -------------
-
   all_values$value <- as.numeric(all_values$value)
-  summ_values <- all_values %>%
-    dplyr::filter(!is.na(.data$value)) %>%
-    dplyr::group_by(.data$measure, .data$concentration, .data$Calibrant,
-                    .data$lid_type) %>%
-    dplyr::summarise(mean_value = mean(.data$value))
-
+  all_values <- stats::na.omit(all_values)
 
   # remove unnecessary observations -----------------------------------------
 
-  summ_values <- summ_values %>%
+  all_values <- all_values %>%
     dplyr::filter(((.data$Calibrant == "microspheres") &
                      ((.data$measure == "OD600") |
                         (.data$measure == "OD700"))) |
@@ -438,43 +429,139 @@ generate_cfs <- function(calibration_dir, date, microsphere_vals = c(4,12)) {
                           (.data$measure != "OD700"))))
 
 
+  # remove saturated values -------------------------------------------------
+  # using similar approach to Beal et al. 2019 bioRxiv to assess validitiy of measurements
+
+  non_sat_values <- c()
+  for(lid in unique(all_values$lid_type)){
+    temp_lid_values <- all_values %>% dplyr::filter(lid_type == lid)
+    for(calib in unique(temp_lid_values$Calibrant)){
+      temp_calib_lid_values <- temp_lid_values %>% dplyr::filter(Calibrant == calib)
+      for(meas in unique(temp_calib_lid_values$measure)){
+        temp_meas_calib_lid_values <- temp_calib_lid_values %>% dplyr::filter(measure == meas)
+
+        blank_mean <- mean(temp_meas_calib_lid_values[temp_meas_calib_lid_values$concentration == 0,]$value)
+        blank_sd <- stats::sd(temp_meas_calib_lid_values[temp_meas_calib_lid_values$concentration == 0,]$value)
+
+        for(rplct in unique(temp_meas_calib_lid_values$replicate)){
+          temp_rep_meas_calib_lid_values <- temp_meas_calib_lid_values %>% dplyr::filter(replicate == rplct)
+
+          concentrations <- sort(unique(temp_rep_meas_calib_lid_values$concentration))
+          fold_dilution <- concentrations[3] / concentrations[2]
+
+          high_saturation_threshold <- fold_dilution * 0.75
+
+          prev_value <- 0
+          for(conc in concentrations){
+            temp_rep_meas_calib_lid_values$fold_dilution <- 1/fold_dilution
+            temp_rep_meas_calib_lid_values$max_concentration <- max(concentrations)
+            temp_rep_meas_calib_lid_values$dilution_idx <- length(concentrations) - which(concentrations == conc)
+
+            this_value <- temp_rep_meas_calib_lid_values[temp_rep_meas_calib_lid_values$concentration == conc,]$value
+
+            if(conc == 0){
+              non_sat_values <- rbind(non_sat_values, temp_rep_meas_calib_lid_values[temp_rep_meas_calib_lid_values$concentration == conc,])
+            }
+            ## check high saturation
+            else if(this_value >= prev_value * high_saturation_threshold){
+              ## check low saturation
+              if(this_value >= blank_mean + 2 * blank_sd){
+                non_sat_values <- rbind(non_sat_values, temp_rep_meas_calib_lid_values[temp_rep_meas_calib_lid_values$concentration == conc,])
+              }
+            }
+            prev_value <- this_value
+          }
+        }
+      }
+    }
+  }
+
+
+  # calculate mean of 4 replicates -------------
+
+  summ_values <- non_sat_values %>%
+    dplyr::group_by(.data$measure, .data$concentration, .data$Calibrant,
+                    .data$lid_type, .data$max_concentration,
+                    .data$dilution_idx, .data$fold_dilution) %>%
+    dplyr::summarise(mean_value = mean(.data$value, na.rm = T)) %>%
+    dplyr::filter(!is.na(.data$mean_value))
+
+
   # normalise data ----------------------------------------------------------
 
-  unique_microsphere_concs <- unique(subset(summ_values, Calibrant=='microspheres')[['concentration']]) #get the range of microsphere concentrations
-	used_microsphere_concs <- unique_microsphere_concs[microsphere_vals[1]:microsphere_vals[2]] #use the range of concentrations specified by user 
   norm_values <- summ_values %>%
-  dplyr::group_by(.data$measure, .data$Calibrant, .data$lid_type) %>%
-  dplyr::mutate(normalised_value = .data$mean_value -
-                  .data$mean_value[.data$concentration == 0]) %>%
-  dplyr::filter(((.data$Calibrant == "fluorescein") &
-                   (.data$concentration != 0)) |             # exclude fluorescein concentration of 0 to avoid dividing by 0
-                  ((.data$Calibrant == "microspheres") &
-                     (.data$concentration %in% used_microsphere_concs)))  # only take the top 8 data points to avoid low concentration variability
+    dplyr::group_by(.data$measure, .data$Calibrant, .data$lid_type) %>%
+    dplyr::mutate(normalised_value = .data$mean_value -
+                    .data$mean_value[.data$concentration == 0]) %>%
+    dplyr::filter(.data$concentration != 0)
 
-  # fit linear models to the normalised data  --------
 
-  fit_values <- norm_values %>%
-    dplyr::group_by(.data$lid_type, .data$measure, .data$Calibrant) %>%
-    dplyr::do(broom::tidy(stats::lm(normalised_value~concentration,
-                                    data = .data))) %>%  # fit linear model (lm) and extract coefficients (broom::tidy)
-    dplyr::select(1:5) %>%                                                   # only keep useful columns
-    tidyr::spread(.data$term, .data$estimate) %>%                                        # spread the data so we have a column for intercept coeffs and one for slope coeffs
-    dplyr::rename("intercept" = .data$`(Intercept)`,
-                  "slope" = .data$concentration)
+  # fit pipetting error model for conversion factors ------------------------
+  # error model from Beal et al. 2019 bioRxiv
+  fit_values <- c()
+  for(lid in unique(norm_values$lid_type)){
+    temp_lid_values <- norm_values %>% dplyr::filter(lid_type == lid)
+    for(calib in unique(temp_lid_values$Calibrant)){
+      temp_calib_lid_values <- temp_lid_values %>% dplyr::filter(Calibrant == calib)
+      for(meas in unique(temp_calib_lid_values$measure)){
+        temp_meas_calib_lid_values <- temp_calib_lid_values %>% dplyr::filter(measure == meas)
+
+        model <- 0
+
+        error_func <- function(x){
+          data <- temp_meas_calib_lid_values
+
+          Sp <- x[1]
+          beta <- x[2]
+          error <- 0
+
+          for(i in data$dilution_idx){
+            data_i <- data[data$dilution_idx == i,]
+
+            b_i <- data_i$max_concentration * (1 - data_i$fold_dilution - beta) *
+              (data_i$fold_dilution + beta) ^ (data_i$dilution_idx - 1)
+
+            e_i <- abs(log10(Sp * b_i / data_i$normalised_value))^2
+
+            error <- error + e_i
+          }
+
+          return(error)
+        }
+
+        if(calib == "microspheres"){ # n.b. initial Sp value for microspheres needs to be much lower than for fluorescein to acheive a fit
+          res <- stats::optim(c(1e-8,0), error_func)
+        } else if(calib == "fluorescein"){
+          res <- stats::optim(c(1,0), error_func)
+        }
+
+        if(res$convergence == 0){
+          new_fit <- data.frame(Sp = res$par[1], beta = res$par[2],
+                                lid_type = lid, Calibrant = calib,
+                                measure = meas)
+          fit_values <- rbind(fit_values, new_fit)
+        }
+      }
+    }
+  }
+
+  norm_values <- dplyr::full_join(norm_values, fit_values)
 
 
   # plot the mean normalized values -----------------------------------------
 
   abs_plt <-
     ggplot2::ggplot(data = norm_values %>%
-                      dplyr::filter(.data$Calibrant == "microspheres"),
-                    ggplot2::aes(x = .data$concentration,
-                                 y = .data$normalised_value)) +
-    ggplot2::geom_point() +
-    ggplot2::geom_smooth(method = "lm", formula = y~x) + #fit a line
+                      dplyr::filter(.data$Calibrant == "microspheres")) +
+    ggplot2::geom_point(ggplot2::aes(x = dilution_idx,
+                                     y = normalised_value)) +
+    ggplot2::geom_line(ggplot2::aes(x = dilution_idx,
+                                    y = Sp * max_concentration *
+                                      (1 - fold_dilution - beta) *
+                                      (fold_dilution + beta) ^ (dilution_idx - 1))) +
     ggplot2::scale_y_continuous("Normalised Absorbance", trans = "log10") +
-    ggplot2::scale_x_continuous("Number of Microspheres", trans = "log10") +
-    ggplot2::facet_grid(measure ~ lid_type) +
+    ggplot2::scale_x_continuous("Microspheres dilution") +
+    ggplot2::facet_grid(measure~lid_type) +
     ggplot2::theme_bw(base_size = 12)
 
   ggplot2::ggsave(paste(calibration_dir, date,
@@ -483,16 +570,16 @@ generate_cfs <- function(calibration_dir, date, microsphere_vals = c(4,12)) {
 
   flu_plt <-
     ggplot2::ggplot(data = norm_values %>%
-                      dplyr::filter(.data$Calibrant == "fluorescein"),
-                    ggplot2::aes(x = .data$concentration,
-                                 y = .data$normalised_value)) +
-    ggplot2::geom_point() +
-    ggplot2::geom_smooth(method = "lm", formula = y~x) +
-    ggplot2::scale_y_continuous("Normalized Fluorescence (a.u.)",
-                                trans = "log10") +
-    ggplot2::scale_x_continuous("Fluorescein Concentration (uM)",
-                                trans = "log10") +
-    ggplot2::facet_grid(measure ~ lid_type) +
+                      dplyr::filter(.data$Calibrant == "fluorescein")) +
+    ggplot2::geom_point(ggplot2::aes(x = dilution_idx,
+                                     y = normalised_value)) +
+    ggplot2::geom_line(ggplot2::aes(x = dilution_idx,
+                                    y = Sp * max_concentration *
+                                      (1 - fold_dilution - beta) *
+                                      (fold_dilution + beta) ^ (dilution_idx - 1))) +
+    ggplot2::scale_y_continuous("Normalised Fluorescence", trans = "log10") +
+    ggplot2::scale_x_continuous("Fluorescein dilution") +
+    ggplot2::facet_grid(measure~lid_type) +
     ggplot2::theme_bw(base_size = 12)
 
   ggplot2::ggsave(paste(calibration_dir, date,
