@@ -1,17 +1,17 @@
 #' Plate reader normalisation and calibration
 #'
-#' @param pr_data a long data.frame containing you plate reader data
+#' @param data_csv path to a .csv file containing parsed plate reader data
 #' @param blank_well the well coordinates of one or more media blanks
 #' @param neg_well the well coordinates of a non-fluorescent control
 #' @param od_name the column name for the optical density data
-#' @param flu_names the column names for the fluorscence data
+#' @param flu_names the column names for the fluorescence data
 #' @param af_model model used to fit negative control autofluorescence.
-#' For now these include "polynomial", "invers_poly", "exponential", "spline" or "loess".
+#' For now these include "polynomial", "invers_poly", "exponential", "spline" and "loess".
 #' @param to_MEFL a Boolean to determine whether to attempt to convert OD and
 #' GFP reading to calibrated units
-#' @param GFP_gain if to_MEFL=T, the gain value at which GFP was recorded
-#' @param lid_type if to_MEFL=T, the sealing mechanism used on the
-#' microtitre-plate. See the conversion_factors_csv for available options
+#' @param flu_gains if to_MEFL=T, the gain values at which the fluorophores
+#' specified in flu_names was recorded. If there isn't calibration data for a
+#' fluorophore, do not speficy a gain value
 #' @param conversion_factors_csv if to_MEFL=T, path of the csv file containing
 #' conversion factors from plate reader calibration
 #'
@@ -21,15 +21,18 @@
 #' @importFrom rlang .data
 #'
 #' @examples
-process_plate <- function(pr_data, blank_well = "A1", neg_well = "A2",
+process_plate <- function(data_csv, blank_well = "A1", neg_well = "A2",
                           od_name = "OD", flu_names = c("GFP"),
-                          af_model = "polynomial", to_MEFL = F, GFP_gain = 0,
-                          lid_type = "nolid", conversion_factors_csv = NA) {
+                          af_model = "polynomial", to_MEFL = F,
+                          flu_gains, conversion_factors_csv) {
+
+  pr_data <- utils::read.csv(data_csv, check.names = F)
+
   od_norm_pr_data <- od_norm(pr_data, blank_well, od_name)
 
   plt_od <- ggplot2::ggplot(od_norm_pr_data) +
-    ggplot2::geom_line(ggplot2::aes_string(x = "time", y = od_name,
-                                           colour = '"raw"'), size = 0.2) +
+    ggplot2::geom_line(ggplot2::aes(x = .data$time, y = .data[[od_name]],
+                                    colour = "raw"), size = 0.2) +
     ggplot2::geom_line(ggplot2::aes(x = .data$time, y = .data$normalised_OD,
                                     colour = "normalised"), size = 0.2) +
     ggplot2::scale_x_continuous("time") +
@@ -45,13 +48,13 @@ process_plate <- function(pr_data, blank_well = "A1", neg_well = "A2",
                                  flu_names[flu_idx], af_model)
 
     plt_flu <- ggplot2::ggplot(flu_norm_pr_data) +
-      ggplot2::geom_line(ggplot2::aes_string(x = "time", y = flu_names[flu_idx],
-                                             colour = '"raw"'), size = 0.2) +
-      ggplot2::geom_line(ggplot2::aes_string(x = "time",
-                                             y = paste("normalised_",
+      ggplot2::geom_line(ggplot2::aes(x = .data$time, y = .data[[flu_names[flu_idx]]],
+                                      colour = "raw"), size = 0.2) +
+      ggplot2::geom_line(ggplot2::aes(x = .data$time,
+                                      y = .data[[paste("normalised_",
                                                        flu_names[flu_idx],
-                                                       sep = ""),
-                                             colour = '"normalised"'),
+                                                       sep = "")]],
+                                      colour = "normalised"),
                          size = 0.2) +
       ggplot2::scale_x_continuous("time") +
       ggplot2::scale_colour_discrete("") +
@@ -65,46 +68,25 @@ process_plate <- function(pr_data, blank_well = "A1", neg_well = "A2",
   out_data <- flu_norm_pr_data
 
   if (to_MEFL) {
-    out_data <- calibrate_plate(out_data, lid_type, GFP_gain, od_name,
-                                conversion_factors_csv)
+    out_data <- calibrate_od(out_data, od_name,
+                             conversion_factors_csv)
+
+    for (flu_idx in seq_len(length(flu_names))) {
+      if(length(flu_gains) >= flu_idx){
+        out_data <- calibrate_flu(out_data, flu_names[flu_idx],
+                                  flu_gains[flu_idx], od_name,
+                                  conversion_factors_csv)
+      }
+      else {break}
+    }
   }
 
+  utils::write.csv(x = out_data,
+                   file = gsub(".csv", "_processed.csv", data_csv),
+                   row.names = FALSE)
   return(out_data)
 }
 
-#' Plate reader normalisation and calibration
-#'
-#' Deprecated. Please use \code{process_plate()}.
-#'
-#' @param pr_data a long data.frame containing you plate reader data
-#' @param blank_well the well coordinates of one or more media blanks
-#' @param neg_well the well coordinates of a non-fluorescent control
-#' @param OD_name the column name for the optical density data
-#' @param flu_names the column names for the fluorscence data
-#' @param af_model model used to fit negative control autofluorescence.
-#' For now these include "polynomial", "invers_poly", "exponential", "spline" or "loess".
-#' @param to_MEFL a Boolean to determine whether to attempt to convert OD and
-#' GFP reading to calibrated units
-#' @param GFP_gain if to_MEFL=T, the gain value at which GFP was recorded
-#' @param lid_type if to_MEFL=T, the sealing mechanism used on the
-#' microtitre-plate. See the conversion_factors_csv for available options
-#' @param conversion_factors_csv if to_MEFL=T, path of the csv file containing
-#' conversion factors from plate reader calibration
-#'
-#' @return a data.frame with columns for raw plate reader data, normalised data
-#' and, if to_MEFL = T, calibrated OD and GFP data
-#' @export
-#'
-#'
-#' @examples
-prNorm <- function(pr_data, blank_well = "A1", neg_well = c("A2"),
-                   OD_name = "OD", flu_names = c("GFP"),
-                   af_model = "polynomial", to_MEFL = F, GFP_gain = 0,
-                   lid_type = "nolid", conversion_factors_csv = NA) {
-
-  return(process_plate(pr_data, blank_well, neg_well, OD_name, flu_names, af_model,
-                       to_MEFL, GFP_gain, lid_type, conversion_factors_csv))
-}
 
 #' Normalisation absorbance against blank well
 #'
@@ -128,6 +110,7 @@ od_norm <- function(pr_data, blank_well, od_name) {
 
   return(as.data.frame(pr_data))
 }
+
 
 #' Normalise fluorescence against negative well
 #'
@@ -301,13 +284,10 @@ flu_norm <- function(pr_data, neg_well, blank_well, flu_name, af_model) {
   return(pr_data)
 }
 
-#' Convert arbitrary fluorescence units to calibrated units
+#' Convert arbitrary absorbance units to calibrated units
 #'
 #' @param pr_data a data.frame of parsed plate reader data
-#' @param gfp_gain if to_MEFL=T, the gain value at which GFP was recorded
 #' @param od_name the column name for the optical density data
-#' @param lid if to_MEFL=T, the sealing mechanism used on the microtitre-plate.
-#' See the conversion_factors_csv for available options
 #' @param conversion_factors_csv if to_MEFL=T, path of the csv file containing
 #' conversion factors from plate reader calibration
 #'
@@ -315,297 +295,262 @@ flu_norm <- function(pr_data, neg_well, blank_well, flu_name, af_model) {
 #' @importFrom rlang .data
 #'
 #' @return
-calibrate_plate <- function(pr_data, lid, gfp_gain, od_name, conversion_factors_csv) {
+calibrate_od <- function(pr_data, od_name, conversion_factors_csv) {
   conversion_factors <- utils::read.csv(conversion_factors_csv)
 
   # Get conversion factor for OD --------------------------------------------
 
   od_cf <- unlist(conversion_factors %>%
                     dplyr::filter(.data$measure == od_name) %>%
-                    dplyr::filter(.data$lid_type == lid) %>%
                     dplyr::select(.data$Sp))
 
-
-  # Get conversion factor for GFP -------------------------------------------
-
-  gfp_cfs <- conversion_factors %>%
-    dplyr::filter(.data$Calibrant == "fluorescein") %>%
-    dplyr::filter(.data$lid_type == lid)
-
-  gfp_cfs$measure <- as.numeric(gsub("Gain ", "", gfp_cfs$measure))
-
-  # Fit cf to Gain relation to get cf for specific gain ---------------------
-  model <- stats::lm(log10(Sp) ~ poly(measure, 2), data = gfp_cfs)
-  gfp_cf <- 10 ^ stats::predict(model, data.frame(measure = gfp_gain))
-  ggplot2::ggplot() +
-    ggplot2::geom_line(ggplot2::aes(x = gfp_cfs$measure,
-                                    y = 10^stats::predict(model, gfp_cfs))) +
-    ggplot2::geom_point(ggplot2::aes(x = gfp_cfs$measure,
-                                     y = gfp_cfs$Sp)) +
-    ggplot2::geom_vline(xintercept = gfp_gain, linetype = 2) +
-    ggplot2::geom_hline(yintercept = 10 ^ stats::predict(model, data.frame(measure = gfp_gain)),
-                        linetype = 2) +
-    ggplot2::geom_point(ggplot2::aes(x = gfp_gain,
-                                     y = 10 ^ stats::predict(model, data.frame(measure = gfp_gain))),
-                        colour = "red", shape = 1, size = 2) +
-    ggplot2::scale_x_continuous("Gain") +
-    ggplot2::scale_y_continuous("Conversion factor (MEFL/a.u.)",
-                                trans = "log10") +
-    ggplot2::theme_bw()
-
-
   pr_data$calibrated_OD <- pr_data$normalised_OD / od_cf
-
-  MFL_per_uM <- 6.02e13 #MEFL/uM fluorescein (value from Jacob Beal's iGEM conversion excel spreadsheet)
-  pr_data$calibrated_GFP <- (pr_data$normalised_GFP / gfp_cf) * MFL_per_uM
-
-  pr_data$MEFL_per_particle <- (pr_data$calibrated_GFP)/(pr_data$calibrated_OD)
 
   return(pr_data)
 }
 
+
+#' Convert arbitrary fluorescence units to calibrated units
+#'
+#' @param pr_data a data.frame of parsed plate reader data
+#' @param flu_name name of fluorophore to be calibrated
+#' @param flu_gain gain at which the fluorophore was measured
+#' @param od_name the column name for the optical density data
+#' @param conversion_factors_csv if to_MEFL=T, path of the csv file containing
+#' conversion factors from plate reader calibration
+#'
+#' @importFrom dplyr %>%
+#' @importFrom rlang .data
+#'
+#' @return
+calibrate_flu <- function(pr_data, flu_name, flu_gain, od_name, conversion_factors_csv) {
+  conversion_factors <- utils::read.csv(conversion_factors_csv)
+
+
+  # Get conversion factor for fluorophore ------------------------------------
+
+  flu_cfs <- conversion_factors %>%
+    dplyr::filter(.data$fluorophore == flu_name)
+
+  tryCatch(this_cf <- flu_cfs[which(flu_cfs$measure == paste(flu_name, flu_gain)),]$Sp,
+           finally = this_cf <- NA)
+
+
+  # if a conversion factor doesn't exist at the measured gain, try a --------
+  if(is.na(this_cf)){
+    flu_cfs$gain <- as.numeric(gsub(paste(flu_name, " ", sep=""), "", flu_cfs$measure))
+
+    # Fit cf to Gain relation to get cf for specific gain ---------------------
+    model <- stats::lm(log10(Sp) ~ poly(gain, 2), data = flu_cfs)
+    this_cf <- 10 ^ stats::predict(model, data.frame(gain = flu_gain))
+    ggplot2::ggplot() +
+      ggplot2::geom_line(ggplot2::aes(x = flu_cfs$gain,
+                                      y = 10^stats::predict(model, flu_cfs))) +
+      ggplot2::geom_point(ggplot2::aes(x = flu_cfs$gain,
+                                       y = flu_cfs$Sp)) +
+      ggplot2::geom_vline(xintercept = flu_gain, linetype = 2) +
+      ggplot2::geom_hline(yintercept = 10 ^ stats::predict(model, data.frame(gain = flu_gain)),
+                          linetype = 2) +
+      ggplot2::geom_point(ggplot2::aes(x = flu_gain,
+                                       y = 10 ^ stats::predict(model, data.frame(gain = flu_gain))),
+                          colour = "red", shape = 1, size = 2) +
+      ggplot2::scale_x_continuous("Gain") +
+      ggplot2::scale_y_continuous("Conversion factor (MEFL/a.u.)",
+                                  trans = "log10") +
+      ggplot2::theme_bw()
+  }
+
+  pr_data[,paste("calibrated_", flu_name, sep="")] <-
+    (pr_data[,paste("normalised_", flu_name, sep="")] / this_cf)
+
+  return(pr_data)
+}
+
+
 #' Generate Conversion Factors
 #'
-#' @param calibration_dir path of the directory in which your calibration data
-#' is held
-#' @param date input date as YYYYMMDD on which calibration was carried out.
-#' n.b. this should also be the name of the folder holding the csv files
-#'
-#' @return saves a csv data frame with the conversion factors and two png plots
-#' of the conversion factors (for Absorbance and fluorescence)
+#' @param calibration_csv path of a .csv file of your calibration data
 #'
 #' @export
 #' @importFrom dplyr %>%
-#' @importFrom rlang .data
-generate_cfs <- function(calibration_dir, date) {
-  csv_files <- c("film.csv", "nolid.csv")
-  plate_layout <- utils::read.csv(paste(calibration_dir,
-                                        "calibration_plate_layout.csv",
-                                        sep = "/"))
+#' @importFrom rlang .data :=
+generate_cfs <- function(calibration_csv) {
+  calibration_data <- utils::read.csv(calibration_csv, header = T, check.names = F)
 
-  # parse data --------------------------------------------------------------
 
-  all_values <- c()
-  for (csv_file in csv_files) {
-    csv_data <- utils::read.table(paste(calibration_dir, date, csv_file,
-                                        sep = "/"),
-                                  sep = ",", blank.lines.skip = T, header = F,
-                                  stringsAsFactors = F) #read the csv file
-
-    start_time_idx <- which(csv_data[, 1] == "Start Time")  # get start and end time ids
-    end_idx <- which(csv_data[, 1] == "End Time")
-    names_idx <- which(csv_data[, 1] == "Name")
-    names_idx <- names_idx[2:length(names_idx)]  # remove the first start time entry which just details plate type
-
-    lid_type <- gsub(pattern = ".csv", replacement = "", x = csv_file)
-    for (i in seq_len(length(start_time_idx))) {
-      block_name <- csv_data[names_idx[i], 2]  # record name of what is being measured
-
-      block_start <- start_time_idx[i] + 4  # find start and end of measurement block
-      block_end_idx <- end_idx[i] - 3
-
-      new_block <- csv_data[(block_start):(block_end_idx), 1:2]  # grab and name the data
-      names(new_block)[1] <- "well"
-      names(new_block)[2] <- "value"
-
-      joined_block <- dplyr::full_join(plate_layout, new_block)  # join to plate layout csv, add measurement category
-      joined_block$measure <- block_name
-      joined_block$lid_type <- lid_type
-
-      all_values <- rbind(all_values, joined_block)  # add to all data
-    }
-  }
-  all_values$value <- as.numeric(all_values$value)
-  all_values <- stats::na.omit(all_values)
-
-  # remove unnecessary observations -----------------------------------------
-
-  all_values <- all_values %>%
-    dplyr::filter(((.data$Calibrant == "microspheres") &
-                     ((.data$measure == "OD600") |
-                        (.data$measure == "OD700"))) |
-                    ((.data$Calibrant == "fluorescein") &
-                       ((.data$measure != "OD600") &
-                          (.data$measure != "OD700"))))
+  # get types of measure ----------------------------------------------------
+  well_idx <- which(names(calibration_data) == "well")
+  row_idx <- which(names(calibration_data) == "row")
+  measures <- names(calibration_data)[(well_idx+1):(row_idx-1)]
 
 
   # remove saturated values -------------------------------------------------
   # using similar approach to Beal et al. 2019 bioRxiv to assess validitiy of measurements
 
   non_sat_values <- c()
-  for(lid in unique(all_values$lid_type)){
-    temp_lid_values <- all_values %>% dplyr::filter(lid_type == lid)
-    for(calib in unique(temp_lid_values$Calibrant)){
-      temp_calib_lid_values <- temp_lid_values %>% dplyr::filter(Calibrant == calib)
-      for(meas in unique(temp_calib_lid_values$measure)){
-        temp_meas_calib_lid_values <- temp_calib_lid_values %>% dplyr::filter(measure == meas)
+  for(calib in unique(calibration_data$calibrant)){
+    temp_calib_values <- calibration_data %>%
+      dplyr::filter(.data$calibrant == calib)
 
-        blank_mean <- mean(temp_meas_calib_lid_values[temp_meas_calib_lid_values$concentration == 0,]$value)
-        blank_sd <- stats::sd(temp_meas_calib_lid_values[temp_meas_calib_lid_values$concentration == 0,]$value)
+    concentrations <- sort(unique(temp_calib_values$concentration))
+    fold_dilution <- concentrations[3] / concentrations[2]
 
-        for(rplct in unique(temp_meas_calib_lid_values$replicate)){
-          temp_rep_meas_calib_lid_values <- temp_meas_calib_lid_values %>% dplyr::filter(replicate == rplct)
+    high_saturation_threshold <- fold_dilution * 0.75
 
-          concentrations <- sort(unique(temp_rep_meas_calib_lid_values$concentration))
-          fold_dilution <- concentrations[3] / concentrations[2]
+    temp_calib_values$dilution_ratio <- 1 / fold_dilution
+    temp_calib_values$max_concentration <- max(concentrations)
+    temp_calib_values$dilution_idx <- - log(temp_calib_values$max_concentration / temp_calib_values$concentration) / log(temp_calib_values$dilution_ratio)
 
-          high_saturation_threshold <- fold_dilution * 0.75
+    for(meas in measures){
+      blank_mean <- mean(temp_calib_values[temp_calib_values$concentration == 0,][[meas]], na.rm = T)
+      blank_sd <- stats::sd(temp_calib_values[temp_calib_values$concentration == 0,][[meas]], na.rm = T)
 
-          prev_value <- 0
-          for(conc in concentrations){
-            temp_rep_meas_calib_lid_values$fold_dilution <- 1/fold_dilution
-            temp_rep_meas_calib_lid_values$max_concentration <- max(concentrations)
-            temp_rep_meas_calib_lid_values$dilution_idx <- length(concentrations) - which(concentrations == conc)
+      for(rplct in unique(temp_calib_values$replicate)){
+        prev_value <- 0
+        for(conc in concentrations){
 
-            this_value <- temp_rep_meas_calib_lid_values[temp_rep_meas_calib_lid_values$concentration == conc,]$value
+          this_value <- temp_calib_values[temp_calib_values$concentration == conc & temp_calib_values$replicate == rplct,][[meas]]
+          if(is.na(this_value)){ next }
 
-            if(conc == 0){
-              non_sat_values <- rbind(non_sat_values, temp_rep_meas_calib_lid_values[temp_rep_meas_calib_lid_values$concentration == conc,])
-            }
+          if(conc != 0){
             ## check high saturation
-            else if(this_value >= prev_value * high_saturation_threshold){
-              ## check low saturation
-              if(this_value >= blank_mean + 2 * blank_sd){
-                non_sat_values <- rbind(non_sat_values, temp_rep_meas_calib_lid_values[temp_rep_meas_calib_lid_values$concentration == conc,])
-              }
+            if(this_value <= prev_value * high_saturation_threshold){
+              temp_calib_values[temp_calib_values$concentration == conc & temp_calib_values$replicate == rplct, meas] <- NA
             }
-            prev_value <- this_value
+            ## check low saturation
+            if(this_value <= blank_mean + 2 * blank_sd){
+              temp_calib_values[temp_calib_values$concentration == conc & temp_calib_values$replicate == rplct, meas] <- NA
+            }
           }
+          prev_value <- this_value
         }
       }
     }
+    non_sat_values <- rbind(non_sat_values, temp_calib_values)
   }
 
 
   # calculate mean of 4 replicates -------------
-
+  #
   summ_values <- non_sat_values %>%
-    dplyr::group_by(.data$measure, .data$concentration, .data$Calibrant,
-                    .data$lid_type, .data$max_concentration,
-                    .data$dilution_idx, .data$fold_dilution) %>%
-    dplyr::summarise(mean_value = mean(.data$value, na.rm = T)) %>%
-    dplyr::filter(!is.na(.data$mean_value))
+    dplyr::group_by(.data$calibrant, .data$fluorophore, .data$media,
+                    .data$concentration, .data$dilution_ratio,
+                    .data$max_concentration, .data$dilution_idx, .drop = F) %>%
+    dplyr::summarise_at(measures, mean, na.rm = TRUE) %>%
+    dplyr::filter(!is.na(.data$concentration))
 
 
   # normalise data ----------------------------------------------------------
 
-  norm_values <- summ_values %>%
-    dplyr::group_by(.data$measure, .data$Calibrant, .data$lid_type) %>%
-    dplyr::mutate(normalised_value = .data$mean_value -
-                    .data$mean_value[.data$concentration == 0]) %>%
-    dplyr::filter(.data$concentration != 0)
+  norm_values <- summ_values
+  for(meas in measures){
+    norm_values <- norm_values %>%
+      dplyr::group_by(.data$calibrant) %>%
+      dplyr::mutate({{meas}} := .data[[meas]] -
+                      .data[[meas]][.data$concentration == 0])
+  }
+  norm_values <- norm_values %>% dplyr::filter(.data$concentration != 0)
 
 
   # fit pipetting error model for conversion factors ------------------------
   # error model from Beal et al. 2019 bioRxiv
+
+  long_values <- stats::na.omit(norm_values %>%
+                                  tidyr::pivot_longer(tidyselect::all_of(measures),
+                                                      names_to = "measure",
+                                                      values_to = "normalised_value"))
+
   fit_values <- c()
-  for(lid in unique(norm_values$lid_type)){
-    temp_lid_values <- norm_values %>% dplyr::filter(lid_type == lid)
-    for(calib in unique(temp_lid_values$Calibrant)){
-      temp_calib_lid_values <- temp_lid_values %>% dplyr::filter(Calibrant == calib)
-      for(meas in unique(temp_calib_lid_values$measure)){
-        temp_meas_calib_lid_values <- temp_calib_lid_values %>% dplyr::filter(measure == meas)
+  for(calib in unique(long_values$calibrant)){
+    temp_calib_values <- long_values %>% dplyr::filter(.data$calibrant == calib)
+    for(meas in unique(temp_calib_values$measure)){
+      temp_meas_calib_values <- temp_calib_values %>%
+        dplyr::filter(.data$measure == meas)
 
-        model <- 0
+      if(nrow(temp_meas_calib_values) < 3){
+        next
+      }
 
-        error_func <- function(x){
-          data <- temp_meas_calib_lid_values
+      model <- 0
 
-          Sp <- x[1]
-          beta <- x[2]
-          error <- 0
+      error_func <- function(x){
+        data <- temp_meas_calib_values
 
-          for(i in data$dilution_idx){
-            data_i <- data[data$dilution_idx == i,]
+        Sp <- x[1]
+        beta <- x[2]
+        error <- 0
 
-            b_i <- data_i$max_concentration * (1 - data_i$fold_dilution - beta) *
-              (data_i$fold_dilution + beta) ^ (data_i$dilution_idx - 1)
+        for(i in data$dilution_idx){
+          data_i <- data[data$dilution_idx == i,]
 
-            e_i <- abs(log10(Sp * b_i / data_i$normalised_value))^2
+          b_i <- data_i$max_concentration * (1 - data_i$dilution_ratio - beta) *
+            (data_i$dilution_ratio + beta) ^ (data_i$dilution_idx - 1)
 
-            error <- error + e_i
-          }
+          e_i <- abs(log10(Sp * b_i / data_i$normalised_value))^2
 
-          return(error)
+          error <- error + e_i
         }
 
-        if(calib == "microspheres"){ # n.b. initial Sp value for microspheres needs to be much lower than for fluorescein to acheive a fit
-          res <- stats::optim(c(1e-8,0), error_func)
-        } else if(calib == "fluorescein"){
-          res <- stats::optim(c(1,0), error_func)
-        }
+        return(error)
+      }
 
-        if(res$convergence == 0){
-          new_fit <- data.frame(Sp = res$par[1], beta = res$par[2],
-                                lid_type = lid, Calibrant = calib,
-                                measure = meas)
-          fit_values <- rbind(fit_values, new_fit)
-        }
+      if(calib == "microspheres"){ # n.b. initial Sp value for microspheres needs to be much lower than for fluorescein to acheive a fit
+        res <- stats::optim(c(1e-8,0), error_func)
+      } else if(calib == "fluorescein"){
+        res <- stats::optim(c(1,0), error_func)
+      }
+
+      if(res$convergence == 0){
+        new_fit <- data.frame(Sp = res$par[1], beta = res$par[2],
+                              calibrant = calib,
+                              fluorophore = temp_meas_calib_values$fluorophore[1],
+                              measure = meas)
+        fit_values <- rbind(fit_values, new_fit)
       }
     }
   }
 
-  norm_values <- dplyr::full_join(norm_values, fit_values)
+  long_values <- dplyr::full_join(long_values, fit_values)
 
 
   # plot the mean normalized values -----------------------------------------
 
   abs_plt <-
-    ggplot2::ggplot(data = norm_values %>%
-                      dplyr::filter(.data$Calibrant == "microspheres")) +
+    ggplot2::ggplot(data = long_values %>%
+                      dplyr::filter(.data$calibrant == "microspheres")) +
     ggplot2::geom_point(ggplot2::aes(x = dilution_idx,
                                      y = normalised_value)) +
     ggplot2::geom_line(ggplot2::aes(x = dilution_idx,
                                     y = Sp * max_concentration *
-                                      (1 - fold_dilution - beta) *
-                                      (fold_dilution + beta) ^ (dilution_idx - 1))) +
+                                      (1 - dilution_ratio - beta) *
+                                      (dilution_ratio + beta) ^ (dilution_idx - 1))) +
     ggplot2::scale_y_continuous("Normalised Absorbance", trans = "log10") +
     ggplot2::scale_x_continuous("Microspheres dilution") +
-    ggplot2::facet_grid(measure~lid_type) +
+    ggplot2::facet_wrap(~measure) +
     ggplot2::theme_bw(base_size = 12)
 
-  ggplot2::ggsave(paste(calibration_dir, date,
-                        "Absorbance_conversion_factors.pdf", sep = "/"),
+  ggplot2::ggsave(gsub(".csv", "_absorbance_cfs.pdf", calibration_csv),
                   plot = abs_plt)
 
   flu_plt <-
-    ggplot2::ggplot(data = norm_values %>%
-                      dplyr::filter(.data$Calibrant == "fluorescein")) +
+    ggplot2::ggplot(data = long_values %>%
+                      dplyr::filter(.data$calibrant == "fluorescein")) +
     ggplot2::geom_point(ggplot2::aes(x = dilution_idx,
                                      y = normalised_value)) +
     ggplot2::geom_line(ggplot2::aes(x = dilution_idx,
                                     y = Sp * max_concentration *
-                                      (1 - fold_dilution - beta) *
-                                      (fold_dilution + beta) ^ (dilution_idx - 1))) +
+                                      (1 - dilution_ratio - beta) *
+                                      (dilution_ratio + beta) ^ (dilution_idx - 1))) +
     ggplot2::scale_y_continuous("Normalised Fluorescence", trans = "log10") +
     ggplot2::scale_x_continuous("Fluorescein dilution") +
-    ggplot2::facet_grid(measure~lid_type) +
+    ggplot2::facet_wrap(~measure) +
     ggplot2::theme_bw(base_size = 12)
 
-  ggplot2::ggsave(paste(calibration_dir, date,
-                        "Fluorescence_conversion_factors.pdf", sep = "/"),
-                  plot = flu_plt, width = 12, height = 25, units = "cm")
+  ggplot2::ggsave(gsub(".csv", "_fluorescence_cfs.pdf", calibration_csv),
+                  plot = flu_plt)
 
 
   # save conversion factors to a csv ----------------------------------------
 
-  utils::write.csv(fit_values, paste(calibration_dir, date, "cfs_generated.csv",
-                                     sep = "/"), row.names = FALSE)
-
-  return()
-}
-
-#' Generate conversion factors
-#'
-#' @param calibration_dir path of the directory in which your calibration data
-#' is held
-#' @param date input date as YYYYMMDD on which calibration was carried out.
-#' n.b. this should also be the name of the folder holding the csv files
-#'
-#' @return saves a csv data frame with the conversion factors and two png plots
-#' of the conversion factors (for Absorbance and fluorescence)
-#'
-#' @export
-generateCfs <- function(calibration_dir, date) {
-  generate_cfs(calibration_dir, date)
+  utils::write.csv(fit_values, gsub(".csv", "_cfs.csv", calibration_csv), row.names = FALSE)
 }

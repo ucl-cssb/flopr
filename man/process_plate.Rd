@@ -5,20 +5,19 @@
 \title{Plate reader normalisation and calibration}
 \usage{
 process_plate(
-  pr_data,
+  data_csv,
   blank_well = "A1",
   neg_well = "A2",
   od_name = "OD",
   flu_names = c("GFP"),
   af_model = "polynomial",
   to_MEFL = F,
-  GFP_gain = 0,
-  lid_type = "nolid",
-  conversion_factors_csv = NA
+  flu_gains,
+  conversion_factors_csv
 )
 }
 \arguments{
-\item{pr_data}{a long data.frame containing you plate reader data}
+\item{data_csv}{path to a .csv file containing parsed plate reader data}
 
 \item{blank_well}{the well coordinates of one or more media blanks}
 
@@ -26,18 +25,17 @@ process_plate(
 
 \item{od_name}{the column name for the optical density data}
 
-\item{flu_names}{the column names for the fluorscence data}
+\item{flu_names}{the column names for the fluorescence data}
 
 \item{af_model}{model used to fit negative control autofluorescence.
-For now these include "polynomial", "invers_poly", "exponential", "spline" or "loess".}
+For now these include "polynomial", "invers_poly", "exponential", "spline" and "loess".}
 
 \item{to_MEFL}{a Boolean to determine whether to attempt to convert OD and
 GFP reading to calibrated units}
 
-\item{GFP_gain}{if to_MEFL=T, the gain value at which GFP was recorded}
-
-\item{lid_type}{if to_MEFL=T, the sealing mechanism used on the
-microtitre-plate. See the conversion_factors_csv for available options}
+\item{flu_gains}{if to_MEFL=T, the gain values at which the fluorophores
+specified in flu_names was recorded. If there isn't calibration data for a
+fluorophore, do not speficy a gain value}
 
 \item{conversion_factors_csv}{if to_MEFL=T, path of the csv file containing
 conversion factors from plate reader calibration}

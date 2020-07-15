@@ -4,12 +4,15 @@
 \alias{spark_parse}
 \title{Parser for Tecan Spark plate reader data}
 \usage{
-spark_parse(data_csv, layout_csv)
+spark_parse(data_csv, layout_csv, timeseries = F)
 }
 \arguments{
 \item{data_csv}{path to csv file from Tecan Spark plate reader}
 
 \item{layout_csv}{path to csv file containing plate layout information}
+
+\item{timeseries}{Boolean flag indicating whether the data is a timeseries or
+single recording. The Tecan software outputs the two scenarios differently.}
 }
 \value{
 a data.frame containing the parsed plate reader data

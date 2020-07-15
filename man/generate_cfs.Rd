@@ -4,18 +4,10 @@
 \alias{generate_cfs}
 \title{Generate Conversion Factors}
 \usage{
-generate_cfs(calibration_dir, date)
+generate_cfs(calibration_csv)
 }
 \arguments{
-\item{calibration_dir}{path of the directory in which your calibration data
-is held}
-
-\item{date}{input date as YYYYMMDD on which calibration was carried out.
-n.b. this should also be the name of the folder holding the csv files}
-}
-\value{
-saves a csv data frame with the conversion factors and two png plots
-of the conversion factors (for Absorbance and fluorescence)
+\item{calibration_csv}{path of a .csv file of your calibration data}
 }
 \description{
 Generate Conversion Factors

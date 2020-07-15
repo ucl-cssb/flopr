@@ -1,7 +1,7 @@
 Package: flopr
 Type: Package
 Title: A package for the normalisation and calibration of flow cytometry and plate reader spectrophotometry data
-Version: 0.1.0
+Version: 0.2.0
 Authors@R: person("Fedorec", "Alex J H", , "alexander.fedorec.13@ucl.ac.uk", c("aut", "cre"))
 Author: Alex J H Fedorec [aut, cre]
 Maintainer: Alex J H Fedorec <alexander.fedorec.13@ucl.ac.uk>
@@ -25,5 +25,6 @@ Imports:
   rlang,
   tidyr,
   broom,
-  mgcv
-RoxygenNote: 7.1.0
+  mgcv,
+  tidyselect
+RoxygenNote: 7.1.1
