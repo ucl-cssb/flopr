@@ -5,12 +5,12 @@
 #'
 #' @param fcs_file path of an .fcs files to be processed.
 #' @param flu_channels a vector of strings of the fluorescence channels to keep
-#' in the trimmed data and plotting. Defaults to "BL1-H".
+#' in the processed data and plotting. Defaults to "BL1-H".
 #' @param do_plot a Boolean flag to determine whether to produce plots showing
 #' the trimming of each \code{flowFrame} Defaults to \code{FALSE}.
 #' @param pre_cleaned have you pre removed background debris.
 #'
-#' @return nothing is returned. A trimmed .fcs file is produced and a plot if
+#' @return nothing is returned. A processed .fcs file is produced and a plot if
 #' \code{do_plot = TRUE}.
 #'
 #' @export
@@ -31,9 +31,9 @@ process_fcs <- function(fcs_file, flu_channels=c("BL1-H"), do_plot = F,
   ## Try to remove doublets
   singlet_flow_frame <- get_singlets(bacteria_flow_frame)
 
-  ## Save trimmed flowFrames to a new folder
+  ## Save processed flowFrames to a new folder
   out_name <- paste(substr(x = fcs_file, start = 1, stop = nchar(fcs_file) - 4),
-                    "_trimmed.fcs", sep = "")
+                    "_processed.fcs", sep = "")
 
   flowCore::write.FCS(singlet_flow_frame, out_name)
 
@@ -55,13 +55,15 @@ process_fcs <- function(fcs_file, flu_channels=c("BL1-H"), do_plot = F,
 #' @param pattern a regex pattern to match particular .fcs files. Default is
 #' \code{"*.fcs"} matching all .fcs files.
 #' @param flu_channels a vector of strings of the fluorescence channels to keep
-#' in the trimmed data and plotting. Defaults to "BL1-H".
+#' in the processed data and plotting. Defaults to "BL1-H".
 #' @param calibrate a Boolean flag to determine whether to convert fluorescence
 #' to MEF values. Requires an .fcs file with named \code{"*beads*.fcs"}.
 #' Defaults to \code{FALSE}.
 #' @param do_plot a Boolean flag to determine whether to produce plots showing
 #' the trimming of each \code{flowFrame}. Defaults to \code{FALSE}.
 #' @param pre_cleaned have you pre removed background debris
+#' @param neg_fcs filename of .fcs file for a negative control used for
+#' fluorescence normalisation.
 #' @param mef_peaks a list of lists in the form \code{list(list(channel="BL1-H",
 #'  peaks=c(0, 200, ...)} of MEF fluorescence values for the calibration beads.
 #'   Default values for BL1-H and YL2-H.
@@ -74,15 +76,15 @@ process_fcs <- function(fcs_file, flu_channels=c("BL1-H"), do_plot = F,
 #'  \code{list(list(channel="BL1-H", peaks=c(2.1, 2.8, ...)} of log10
 #'  fluorescence values for the calibration beads.
 #'
-#' @return nothing is returned. A new folder is created with the trimmed .fcs
+#' @return nothing is returned. A new folder is created with the processed .fcs
 #' files and plot if \code{do_plot = TRUE}.
 #' @export
 process_fcs_dir <- function(dir_path, pattern = "*.fcs", flu_channels=c("BL1-H"),
-                            do_plot = F, pre_cleaned = F, calibrate = F,
+                            do_plot = F, pre_cleaned = F, neg_fcs = NA, calibrate = F,
                             mef_peaks = NA, bead_dens_bw = 0.025, manual_peaks = NA) {
-  ## Create directory for trimmed flowFrames
-  if (!dir.exists(paste(dir_path, "trimmed", sep = "_"))) {
-    dir.create(paste(dir_path, "trimmed", sep = "_"), recursive = T)
+  ## Create directory for processed flowFrames
+  if (!dir.exists(paste(dir_path, "processed", sep = "_"))) {
+    dir.create(paste(dir_path, "processed", sep = "_"), recursive = T)
   }
 
   if (calibrate) {
@@ -106,6 +108,24 @@ process_fcs_dir <- function(dir_path, pattern = "*.fcs", flu_channels=c("BL1-H")
                                               bead_dens_bw)
   }
 
+  if (!is.na(neg_fcs)) {
+    print("Getting autofluorescence normalisation parameter")
+
+    flow_frame <- flowCore::read.FCS(paste(dir_path, neg_fcs, sep = "/"), emptyValue = F)
+
+    ## Trim 0 values and log10 transform
+    prepped_flow_frame <- prep_flow_frame(flow_frame, flu_channels)
+
+    ## Try to remove background debris by clustering
+    bacteria_flow_frame <- get_bacteria(prepped_flow_frame, pre_cleaned)
+    try(if (bacteria_flow_frame == 0) {
+      next
+    }, silent = T) # if we haven't found bacteria move on to the next flow frame
+
+    ## Try to remove doublets
+    negative_flow_frame <- get_singlets(bacteria_flow_frame)
+  }
+
   all_files <- list.files(path = dir_path, pattern = utils::glob2rx(pattern),
                           full.names = T, recursive = T, include.dirs = T)
   print(paste("Trimming ", length(all_files), " .fcs files.", sep = ""))
@@ -125,75 +145,58 @@ process_fcs_dir <- function(dir_path, pattern = "*.fcs", flu_channels=c("BL1-H")
     ## Try to remove doublets
     singlet_flow_frame <- get_singlets(bacteria_flow_frame)
 
-    ## Convert to MEF
-    if (calibrate) {
-      out_flow_frame <- to_mef(singlet_flow_frame, flu_channels,
-                               calibration_parameters)
-    } else {
-      out_flow_frame <- singlet_flow_frame
+    ## normalise autofluorescence
+    normalised_flow_frame <- singlet_flow_frame
+    if (!is.na(neg_fcs)) {
+      for(flu in flu_channels) {
+
+        ## get geometric mean of negative control for given fluorescence channel
+        neg_mean <- exp(mean(log(negative_flow_frame@exprs[,flu]), trim = 0.05, na.rm = T))
+
+        ## hack to create a new channel
+        normalised_flow_frame <- flowCore::transform(normalised_flow_frame,
+                                                     normFlu = 1)
+
+        ## add normalised fluorescence to the channel
+        normalised_flow_frame@exprs[,"normFlu"] <- normalised_flow_frame@exprs[,flu] - neg_mean
+
+        ## rename the channel
+        normalised_flu = paste("normalised_", flu, sep = "")
+        old_names <- flowCore::colnames(normalised_flow_frame)
+        old_names[length(old_names)] <- normalised_flu
+        flowCore::colnames(normalised_flow_frame) <- old_names
+      }
     }
 
-    ## Save trimmed flowFrames to a new folder
-    out_name <- paste(dirname(next_fcs), "_trimmed/", basename(next_fcs),
+    ## Convert to MEF
+    calibrated_flow_frame <- normalised_flow_frame
+    if (calibrate) {
+      calibrated_flow_frame <- to_mef(calibrated_flow_frame, flu_channels,
+                                      calibration_parameters, !is.na(neg_fcs))
+    }
+
+    out_flow_frame <- calibrated_flow_frame
+
+    ## Save processed flowFrames to a new folder
+    out_name <- paste(dirname(next_fcs), "_processed/", basename(next_fcs),
                       sep = "")
     flowCore::write.FCS(out_flow_frame, out_name)
 
     ##  Plot a grid of graphs showing the stages of trimming
     if (do_plot) {
       plot_trimming(flow_frame, bacteria_flow_frame, singlet_flow_frame,
-                    out_flow_frame, flu_channels, out_name, calibrate)
+                    normalised_flow_frame, out_flow_frame, flu_channels,
+                    out_name, !is.na(neg_fcs), calibrate)
     }
   }
 }
 
-#' Process .fcs files within a directory to remove debris and doublets, and
-#' optionally calibrate
-#'
-#' Deprecated, please use \code{process_fcs_dir}. This function will remain for
-#' backwards compatibility.
-#'
-#' \code{trim.fcs} uses mixture models to cluster bacteria from background
-#' debris and fits a linear model to SSC-H vs SSC-A to remove doublets.
-#'
-#' @param dir_path a directory path containing the .fcs files  to be parsed or
-#' folders to be recursed through.
-#' @param pattern a regex pattern to match particular .fcs files. Default is
-#' \code{"*.fcs"} matching all .fcs files.
-#' @param flu_channels a list of strings of the fluorescence channels to keep
-#' in the trimmed data and plotting. Defaults to "BL1-H".
-#' @param calibrate a Boolean flag to determine whether to convert fluorescence
-#' to MEF values. Requires an .fcs file with named \code{"*beads*.fcs"}.
-#' Defaults to \code{FALSE}.
-#' @param do_plot a Boolean flag to determine whether to produce plots showing
-#' the trimming of each \code{flowFrame}. Defaults to \code{FALSE}.
-#' @param pre_cleaned have you pre removed background debris
-#' @param MEF_peaks a list of lists in the form \code{list(list(channel="BL1-H",
-#'  peaks=c(0, 200, ...)} of MEF fluorescence values for the calibration beads.
-#'   Default values for BL1-H and YL2-H.
-#' @param bead_dens_bw the bandwidth for the kernel density of the bead peak
-#' data. Default = 0.025. Increase if erroneous peaks are being found, decrease
-#'  if not enough peaks are found.
-#' @param manual_peaks if bead peaks are not being found by the EM algorithm,
-#' one can manually specify the positions of the bead peaks (on a log10 scale).
-#'  A list of lists in the form
-#'  \code{list(list(channel="BL1-H", peaks=c(2.1, 2.8, ...)} of log10
-#'  fluorescence values for the calibration beads.
-#'
-#' @return nothing is returned. A new folder is created with the trimmed .fcs
-#' files and plot if \code{do_plot = TRUE}.
-#' @export
-trim.fcs <- function(dir_path, pattern = "*.fcs", flu_channels=c("BL1-H"),
-                     do_plot = F, pre_cleaned = F, calibrate = F,
-                     MEF_peaks = NA, bead_dens_bw = 0.025, manual_peaks = NA) {
-  process_fcs_dir(dir_path, pattern, flu_channels, do_plot, pre_cleaned,
-                  calibrate, MEF_peaks, bead_dens_bw, manual_peaks)
-}
 
 #' Get fluorescence calibration curve parameters
 #'
 #' @param bead_file path to beads .fcs file.
 #' @param flu_channels a vector of strings of the fluorescence channels to keep
-#' in the trimmed data and plotting. Defaults to \code{"BL1-H"}.
+#' in the processed data and plotting. Defaults to \code{"BL1-H"}.
 #' @param mef_peaks a list of lists in the form \code{list(list(channel="BL1-H",
 #'  peaks=c(0, 200, ...)} of MEF fluorescence values for the calibration beads.
 #'   Default values for BL1-H and YL2-H.
@@ -214,7 +217,7 @@ get_calibration <- function(bead_file, flu_channels, mef_peaks, manual_peaks,
   bead_frame <- flowCore::read.FCS(bead_file, emptyValue = F)
 
   out_name <- paste(dirname(bead_file),
-                    "_trimmed/",
+                    "_processed/",
                     basename(unlist(strsplit(bead_file, split = "[.]"))[1]),
                     sep = "")
 
@@ -354,26 +357,31 @@ get_calibration <- function(bead_file, flu_channels, mef_peaks, manual_peaks,
 #'
 #' @param flow_frame a \code{flowFrame} for processing
 #' @param flu_channels a vector of strings of the fluorescence channels to keep
-#' in the trimmed data and plotting. Defaults to \code{"BL1-H"}.
+#' in the processed data and plotting. Defaults to \code{"BL1-H"}.
 #'
 #' @return
 #'
 prep_flow_frame <- function(flow_frame, flu_channels) {
   # log10 transform the values
+  # log10_flow_frame <-
+  #   flowCore::transform(flow_frame,
+  #                       flowCore::transformList(from = flowCore::colnames(flow_frame),
+  #                                               tfun = log10))
+
   log10_flow_frame <-
     flowCore::transform(flow_frame,
-                        flowCore::transformList(from = flowCore::colnames(flow_frame),
+                        flowCore::transformList(from = c("FSC-A", "SSC-A", "FSC-H", "SSC-H"),
                                                 tfun = log10))
 
   # Remove -Inf values produced when log10 is applied
-  trimmed_flow_frame <- log10_flow_frame
+  processed_flow_frame <- log10_flow_frame
   for (marker in c("FSC-H", "SSC-H", "SSC-A", flu_channels)) {
-    trimmed_flow_frame <-
-      flowCore::Subset(trimmed_flow_frame,
-                       is.finite(flowCore::exprs(trimmed_flow_frame[, marker]))[, 1])
+    processed_flow_frame <-
+      flowCore::Subset(processed_flow_frame,
+                       is.finite(flowCore::exprs(processed_flow_frame[, marker]))[, 1])
   }
 
-  return(trimmed_flow_frame)
+  return(processed_flow_frame)
 }
 
 #' Remove background debris events
@@ -408,11 +416,11 @@ get_bacteria <- function(flow_frame, pre_cleaned) {
     print(paste(best_clusters@K, "clusters found"))
 
     if (best_clusters@K == 2) { ## if there are two cluster
-      bact_indx <- which(flowClust::getEstimates(all_clusters[[2]], flow_frame)$locationsC[, 2]
-                         == max(flowClust::getEstimates(all_clusters[[2]], flow_frame)$locationsC[, 2]))
+      bact_indx <- which(flowClust::getEstimates(best_clusters, flow_frame)$locationsC[, 2]
+                         == max(flowClust::getEstimates(best_clusters, flow_frame)$locationsC[, 2]))
 
-      clst_fsc <- flowClust::getEstimates(all_clusters[[2]], flow_frame)$locationsC[[bact_indx, 1]]
-      clst_ssc <- flowClust::getEstimates(all_clusters[[2]], flow_frame)$locationsC[[bact_indx, 2]]
+      clst_fsc <- flowClust::getEstimates(best_clusters, flow_frame)$locationsC[[bact_indx, 1]]
+      clst_ssc <- flowClust::getEstimates(best_clusters, flow_frame)$locationsC[[bact_indx, 2]]
 
       if ((clst_fsc < 4) & (clst_ssc < 3)) { # TODO: remove hardcoding of thresholds
         print("only debris found")
@@ -450,11 +458,14 @@ get_bacteria <- function(flow_frame, pre_cleaned) {
 #'
 get_singlets <- function(flow_frame) {
 
-  ## method using function from openCYto package
-  sg <- flowStats::singletGate(flow_frame, area = "SSC-A", height = "SSC-H",
-                               prediction_level = 0.95)
-  fres <- flowCore::filter(flow_frame, sg)
-  singlet_flow_frame <- flowCore::Subset(flow_frame, fres)
+  # ## method using function from openCYto package
+  # sg <- flowStats::singletGate(flow_frame, area = "SSC-A", height = "SSC-H",
+  #                              prediction_level = 0.95)
+  # fres <- flowCore::filter(flow_frame, sg)
+  # singlet_flow_frame <- flowCore::Subset(flow_frame, fres)
+
+  singlet_flow_frame <- flowCore::Subset(flow_frame,
+                                         ((flow_frame[, "SSC-H"]@exprs - flow_frame[, "SSC-A"]@exprs)[,1])^2 < 0.01)
 
   return(singlet_flow_frame)
 }
@@ -463,13 +474,13 @@ get_singlets <- function(flow_frame) {
 #'
 #' @param flow_frame a \code{flowFrame} for processing
 #' @param flu_channels a vector of strings of the fluorescence channels to keep
-#' in the trimmed data and plotting. Defaults to "BL1-H".
+#' in the processed data and plotting. Defaults to "BL1-H".
 #' @param calibration_parameters parameters of a model returned by
 #' get_calibration(...)
 #'
 #' @return
 #'
-to_mef <- function(flow_frame, flu_channels, calibration_parameters) {
+to_mef <- function(flow_frame, flu_channels, calibration_parameters, normalise) {
   out_flow_frame <- flow_frame
   for (fl in flu_channels) {
     fl_idx <- which(calibration_parameters$flu == fl)
@@ -478,9 +489,17 @@ to_mef <- function(flow_frame, flu_channels, calibration_parameters) {
                                                 a = calibration_parameters[fl_idx, ]$m,
                                                 b = calibration_parameters[fl_idx, ]$b)
 
+      out_flow_frame[,paste("calibrated_", fl, sep = "")] <- out_flow_frame[, fl]
       out_flow_frame <- flowCore::transform(out_flow_frame,
-                                            flowCore::transformList(fl,
+                                            flowCore::transformList(paste("calibrated_", fl, sep = ""),
                                                                     linear_trans))
+
+      if(normalise){
+        out_flow_frame[, paste("calibrated_normalised_", fl, sep = "")] <- out_flow_frame[, paste("normalised_", fl, sep = "")]
+        out_flow_frame <- flowCore::transform(out_flow_frame,
+                                              flowCore::transformList(paste("calibrated_normalised_", fl, sep = ""),
+                                                                      linear_trans))
+      }
     }
   }
 
@@ -492,17 +511,20 @@ to_mef <- function(flow_frame, flu_channels, calibration_parameters) {
 #' @param flow_frame the original \code{flowFrame}
 #' @param bacteria_flow_frame the \code{flowFrame} with debris removed
 #' @param singlet_flow_frame the \code{flowFrame} with debris and doublets removed
+#' @param normalised_flow_frame the normalised \code{flowFrame}
 #' @param out_flow_frame the calibrated \code{flowFrame} with debris and doublets
 #' removed
 #' @param flu_channels a vector of strings of the fluorescence channels to keep
-#' in the trimmed data and plotting. Defaults to "BL1-H".
+#' in the processed data and plotting. Defaults to "BL1-H".
 #' @param out_name the filename for the outputted \code{flowFrame}
+#' @param normalised a Boolean flag to determine whether to normalise
 #' @param calibrate a Boolean flag to determine whether to convert fluorescence
 #' to MEF values. Requires an .fcs file with named \code{"*beads*.fcs"}.
 #' Defaults to \code{FALSE}.
 #'
 plot_trimming <- function(flow_frame, bacteria_flow_frame, singlet_flow_frame,
-                          out_flow_frame, flu_channels, out_name, calibrate) {
+                          normalised_flow_frame, out_flow_frame, flu_channels,
+                          out_name, normalised, calibrate) {
   ##  This function allows us to take a legend from a plot
   get_legend <- function(myggplot) {
     tmp <- ggplot2::ggplot_gtable(ggplot2::ggplot_build(myggplot))
@@ -554,7 +576,7 @@ plot_trimming <- function(flow_frame, bacteria_flow_frame, singlet_flow_frame,
     ggplot2::ylim(1, 6) + apatheme
 
   ## Grab the legend to use seperately
-  legend <- get_legend(plt_main)
+  bacteria_legend <- get_legend(plt_main)
   plt_main <- plt_main + ggplot2::theme(legend.position = "none")
 
   plts[[1]] <- plt_main
@@ -587,50 +609,71 @@ plot_trimming <- function(flow_frame, bacteria_flow_frame, singlet_flow_frame,
 
   plts[[2]] <- plt_single
 
+  plts[[3]] <- bacteria_legend
+
 
   # Fluorescence channels ---------------------------------------------------
 
   ## NOTE: the local is necessary here as R is not good at variable scope.
   ## Without the local, each plot gets overwritten by the final plot in the
   ## loop. Also note the "<<-" to assign the plot outside of the local scope
+  flu_legend <- c()
   for (f_count in seq_len(length(flu_channels)))
     local({
       f_count <- f_count
       filt <- flu_channels[f_count]
-      plts[[f_count + 2]] <<- ggplot2::ggplot() +
+      plts[[f_count + 3]] <<- ggplot2::ggplot() +
         ggplot2::geom_density(data = as.data.frame(flow_frame[, filt]@exprs),
                               ggplot2::aes(x = log10(flow_frame[, filt]@exprs),
                                            y = ..count.., fill = "all_data"),
-                              alpha = 0.5) +
+                              alpha = 0.5, bw = 0.01) +
         ggplot2::geom_density(data = as.data.frame(bacteria_flow_frame[, filt]@exprs),
                               ggplot2::aes(x = bacteria_flow_frame[, filt]@exprs,
                                            y = ..count.., fill = "bacteria"),
-                              alpha = 0.5) +
+                              alpha = 0.5, bw = 0.01) +
         ggplot2::geom_density(data = as.data.frame(singlet_flow_frame[, filt]@exprs),
                               ggplot2::aes(x = singlet_flow_frame[, filt]@exprs,
                                            y = ..count.., fill = "single_bacteria"),
-                              alpha = 0.5) +
+                              alpha = 0.5, bw = 0.01) +
         ggplot2::xlab(paste("log10(", filt, ")", sep = "")) +
         ggplot2::xlim(0, 6)  + apatheme +
         ggplot2::theme(axis.text.y = ggplot2::element_blank(),
-                       axis.ticks.y = ggplot2::element_blank()) +
-        ggplot2::theme(legend.position = "none")
+                       axis.ticks.y = ggplot2::element_blank())
 
-      if (calibrate) {
-        plts[[f_count + 2]] <<- plts[[f_count + 2]] +
-          ggplot2::geom_density(data = as.data.frame(out_flow_frame[, filt]@exprs),
-                                ggplot2::aes(x = out_flow_frame[, filt]@exprs,
-                                             y = ..count..),
-                                alpha = 0.5, fill = "grey")
+      if (normalised) {
+        plts[[f_count + 3]] <<- plts[[f_count + 3]] +
+          ggplot2::geom_density(data = as.data.frame(normalised_flow_frame[, paste("normalised_", filt, sep="")]@exprs),
+                                ggplot2::aes(x = normalised_flow_frame[, paste("normalised_", filt, sep="")]@exprs,
+                                             y = ..count.., fill = "normalised"),
+                                alpha = 0.5, bw = 0.01)
+        if (calibrate) {
+          plts[[f_count + 3]] <<- plts[[f_count + 3]] +
+            ggplot2::geom_density(data = as.data.frame(out_flow_frame[, paste("calibrated_normalised_", filt, sep="")]@exprs),
+                                  ggplot2::aes(x = out_flow_frame[, paste("calibrated_normalised_", filt, sep="")]@exprs,
+                                               y = ..count.., fill = "calibrated_normalised"),
+                                  alpha = 0.5, bw = 0.01)
+        }
       }
+      if (calibrate) {
+        plts[[f_count + 3]] <<- plts[[f_count + 3]] +
+          ggplot2::geom_density(data = as.data.frame(out_flow_frame[, paste("calibrated_", filt, sep="")]@exprs),
+                                ggplot2::aes(x = out_flow_frame[, paste("calibrated_", filt, sep="")]@exprs,
+                                             y = ..count.., fill = "calibrated"),
+                                alpha = 0.5, bw = 0.01)
+      }
+
+      ## Grab the legend to use seperately
+      flu_legend <<- get_legend(plts[[f_count + 3]])
+      plts[[f_count + 3]] <<- plts[[f_count + 3]] +
+        ggplot2::theme(legend.position = "none")
     })
 
-  plts[[3 + length(flu_channels)]] <- legend
+  plts[[4 + length(flu_channels)]] <- flu_legend
 
 
   # Assemble plots ----------------------------------------------------------
 
-  plt <- gridExtra::arrangeGrob(grobs = plts, ncol = 2)
+  plt <- gridExtra::arrangeGrob(grobs = plts, ncol = 3)
   title <- grid::textGrob(paste("Trimming of flow data to remove background and doublets:\n",
                                 flowCore::identifier(flow_frame)),
                           gp = grid::gpar(fontsize = 10))
@@ -640,16 +683,16 @@ plot_trimming <- function(flow_frame, bacteria_flow_frame, singlet_flow_frame,
                                  pos = 0)
   plt <- gtable::gtable_add_grob(plt, title, 1, 1, 1, ncol(plt))
 
-  print(paste("Plotting trimmed flowFrame ",
+  print(paste("Plotting processed flowFrame ",
               flowCore::identifier(flow_frame)))
 
   ggplot2::ggsave(filename = paste(dirname(out_name),
                                    gsub(".fcs",
-                                        "_trimmed.pdf",
+                                        "_processed.pdf",
                                         basename(out_name)),
                                    sep = "/"),
                   plot = plt,
-                  width = 105,
-                  height = 50 * ceiling((length(plts) / 2)) + 20,
+                  width = 150,
+                  height = 50 * ceiling((length(plts) / 3)) + 20,
                   units = "mm")
 }
