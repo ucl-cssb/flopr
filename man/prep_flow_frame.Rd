@@ -10,7 +10,7 @@ prep_flow_frame(flow_frame, flu_channels)
 \item{flow_frame}{a \code{flowFrame} for processing}
 
 \item{flu_channels}{a vector of strings of the fluorescence channels to keep
-in the trimmed data and plotting. Defaults to \code{"BL1-H"}.}
+in the processed data and plotting. Defaults to \code{"BL1-H"}.}
 }
 \value{
 

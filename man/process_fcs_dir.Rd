@@ -11,6 +11,7 @@ process_fcs_dir(
   flu_channels = c("BL1-H"),
   do_plot = F,
   pre_cleaned = F,
+  neg_fcs = NA,
   calibrate = F,
   mef_peaks = NA,
   bead_dens_bw = 0.025,
@@ -25,12 +26,15 @@ folders to be recursed through.}
 \code{"*.fcs"} matching all .fcs files.}
 
 \item{flu_channels}{a vector of strings of the fluorescence channels to keep
-in the trimmed data and plotting. Defaults to "BL1-H".}
+in the processed data and plotting. Defaults to "BL1-H".}
 
 \item{do_plot}{a Boolean flag to determine whether to produce plots showing
 the trimming of each \code{flowFrame}. Defaults to \code{FALSE}.}
 
 \item{pre_cleaned}{have you pre removed background debris}
+
+\item{neg_fcs}{filename of .fcs file for a negative control used for
+fluorescence normalisation.}
 
 \item{calibrate}{a Boolean flag to determine whether to convert fluorescence
 to MEF values. Requires an .fcs file with named \code{"*beads*.fcs"}.
@@ -51,7 +55,7 @@ one can manually specify the positions of the bead peaks (on a log10 scale).
  fluorescence values for the calibration beads.}
 }
 \value{
-nothing is returned. A new folder is created with the trimmed .fcs
+nothing is returned. A new folder is created with the processed .fcs
 files and plot if \code{do_plot = TRUE}.
 }
 \description{

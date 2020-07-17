@@ -4,16 +4,18 @@
 \alias{to_mef}
 \title{Calibrate fluorescence measurements}
 \usage{
-to_mef(flow_frame, flu_channels, calibration_parameters)
+to_mef(flow_frame, flu_channels, calibration_parameters, normalise)
 }
 \arguments{
 \item{flow_frame}{a \code{flowFrame} for processing}
 
 \item{flu_channels}{a vector of strings of the fluorescence channels to keep
-in the trimmed data and plotting. Defaults to "BL1-H".}
+in the processed data and plotting. Defaults to "BL1-H".}
 
 \item{calibration_parameters}{parameters of a model returned by
 get_calibration(...)}
+
+\item{normalise}{Bollean flag to indicate if data has been normalised}
 }
 \value{
 
