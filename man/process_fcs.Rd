@@ -10,7 +10,7 @@ process_fcs(fcs_file, flu_channels = c("BL1-H"), do_plot = F, pre_cleaned = F)
 \item{fcs_file}{path of an .fcs files to be processed.}
 
 \item{flu_channels}{a vector of strings of the fluorescence channels to keep
-in the trimmed data and plotting. Defaults to "BL1-H".}
+in the processed data and plotting. Defaults to "BL1-H".}
 
 \item{do_plot}{a Boolean flag to determine whether to produce plots showing
 the trimming of each \code{flowFrame} Defaults to \code{FALSE}.}
@@ -18,7 +18,7 @@ the trimming of each \code{flowFrame} Defaults to \code{FALSE}.}
 \item{pre_cleaned}{have you pre removed background debris.}
 }
 \value{
-nothing is returned. A trimmed .fcs file is produced and a plot if
+nothing is returned. A processed .fcs file is produced and a plot if
 \code{do_plot = TRUE}.
 }
 \description{

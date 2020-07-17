@@ -8,9 +8,11 @@ plot_trimming(
   flow_frame,
   bacteria_flow_frame,
   singlet_flow_frame,
-  out_flow_frame,
+  normalised_flow_frame,
+  calibrated_flow_frame,
   flu_channels,
   out_name,
+  normalised,
   calibrate
 )
 }
@@ -21,13 +23,17 @@ plot_trimming(
 
 \item{singlet_flow_frame}{the \code{flowFrame} with debris and doublets removed}
 
-\item{out_flow_frame}{the calibrated \code{flowFrame} with debris and doublets
+\item{normalised_flow_frame}{the normalised \code{flowFrame}}
+
+\item{calibrated_flow_frame}{the calibrated \code{flowFrame} with debris and doublets
 removed}
 
 \item{flu_channels}{a vector of strings of the fluorescence channels to keep
-in the trimmed data and plotting. Defaults to "BL1-H".}
+in the processed data and plotting. Defaults to "BL1-H".}
 
 \item{out_name}{the filename for the outputted \code{flowFrame}}
+
+\item{normalised}{a Boolean flag to determine whether to normalise}
 
 \item{calibrate}{a Boolean flag to determine whether to convert fluorescence
 to MEF values. Requires an .fcs file with named \code{"*beads*.fcs"}.

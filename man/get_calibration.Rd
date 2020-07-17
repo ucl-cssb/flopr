@@ -10,7 +10,7 @@ get_calibration(bead_file, flu_channels, mef_peaks, manual_peaks, bead_dens_bw)
 \item{bead_file}{path to beads .fcs file.}
 
 \item{flu_channels}{a vector of strings of the fluorescence channels to keep
-in the trimmed data and plotting. Defaults to \code{"BL1-H"}.}
+in the processed data and plotting. Defaults to \code{"BL1-H"}.}
 
 \item{mef_peaks}{a list of lists in the form \code{list(list(channel="BL1-H",
 peaks=c(0, 200, ...)} of MEF fluorescence values for the calibration beads.
