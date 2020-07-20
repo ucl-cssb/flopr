@@ -302,7 +302,7 @@ calibrate_od <- function(pr_data, od_name, conversion_factors_csv) {
 
   od_cf <- unlist(conversion_factors %>%
                     dplyr::filter(.data$measure == od_name) %>%
-                    dplyr::select(.data$Sp))
+                    dplyr::select(.data$cf))
 
   pr_data$calibrated_OD <- pr_data$normalised_OD / od_cf
 
@@ -332,7 +332,7 @@ calibrate_flu <- function(pr_data, flu_name, flu_gain, od_name, conversion_facto
   flu_cfs <- conversion_factors %>%
     dplyr::filter(.data$fluorophore == flu_name)
 
-  tryCatch(this_cf <- flu_cfs[which(flu_cfs$measure == paste(flu_name, flu_gain)),]$Sp,
+  tryCatch(this_cf <- flu_cfs[which(flu_cfs$measure == paste(flu_name, flu_gain)),]$cf,
            finally = this_cf <- NA)
 
 
@@ -341,13 +341,13 @@ calibrate_flu <- function(pr_data, flu_name, flu_gain, od_name, conversion_facto
     flu_cfs$gain <- as.numeric(gsub(paste(flu_name, " ", sep=""), "", flu_cfs$measure))
 
     # Fit cf to Gain relation to get cf for specific gain ---------------------
-    model <- stats::lm(log10(Sp) ~ poly(gain, 2), data = flu_cfs)
+    model <- stats::lm(log10(cf) ~ poly(gain, 2), data = flu_cfs)
     this_cf <- 10 ^ stats::predict(model, data.frame(gain = flu_gain))
     ggplot2::ggplot() +
       ggplot2::geom_line(ggplot2::aes(x = flu_cfs$gain,
                                       y = 10^stats::predict(model, flu_cfs))) +
       ggplot2::geom_point(ggplot2::aes(x = flu_cfs$gain,
-                                       y = flu_cfs$Sp)) +
+                                       y = flu_cfs$cf)) +
       ggplot2::geom_vline(xintercept = flu_gain, linetype = 2) +
       ggplot2::geom_hline(yintercept = 10 ^ stats::predict(model, data.frame(gain = flu_gain)),
                           linetype = 2) +
@@ -476,7 +476,7 @@ generate_cfs <- function(calibration_csv) {
       error_func <- function(x){
         data <- temp_meas_calib_values
 
-        Sp <- x[1]
+        cf <- x[1]
         beta <- x[2]
         error <- 0
 
@@ -486,7 +486,7 @@ generate_cfs <- function(calibration_csv) {
           b_i <- data_i$max_concentration * (1 - data_i$dilution_ratio - beta) *
             (data_i$dilution_ratio + beta) ^ (data_i$dilution_idx - 1)
 
-          e_i <- abs(log10(Sp * b_i / data_i$normalised_value))^2
+          e_i <- abs(log10(cf * b_i / data_i$normalised_value))^2
 
           error <- error + e_i
         }
@@ -494,14 +494,14 @@ generate_cfs <- function(calibration_csv) {
         return(error)
       }
 
-      if(calib == "microspheres"){ # n.b. initial Sp value for microspheres needs to be much lower than for fluorescein to acheive a fit
+      if(calib == "microspheres"){ # n.b. initial cf value for microspheres needs to be much lower than for fluorescein to acheive a fit
         res <- stats::optim(c(1e-8,0), error_func)
       } else if(calib == "fluorescein"){
         res <- stats::optim(c(1,0), error_func)
       }
 
       if(res$convergence == 0){
-        new_fit <- data.frame(Sp = res$par[1], beta = res$par[2],
+        new_fit <- data.frame(cf = res$par[1], beta = res$par[2],
                               calibrant = calib,
                               fluorophore = temp_meas_calib_values$fluorophore[1],
                               measure = meas)
@@ -521,7 +521,7 @@ generate_cfs <- function(calibration_csv) {
     ggplot2::geom_point(ggplot2::aes(x = dilution_idx,
                                      y = normalised_value)) +
     ggplot2::geom_line(ggplot2::aes(x = dilution_idx,
-                                    y = Sp * max_concentration *
+                                    y = cf * max_concentration *
                                       (1 - dilution_ratio - beta) *
                                       (dilution_ratio + beta) ^ (dilution_idx - 1))) +
     ggplot2::scale_y_continuous("Normalised Absorbance", trans = "log10") +
@@ -538,7 +538,7 @@ generate_cfs <- function(calibration_csv) {
     ggplot2::geom_point(ggplot2::aes(x = dilution_idx,
                                      y = normalised_value)) +
     ggplot2::geom_line(ggplot2::aes(x = dilution_idx,
-                                    y = Sp * max_concentration *
+                                    y = cf * max_concentration *
                                       (1 - dilution_ratio - beta) *
                                       (dilution_ratio + beta) ^ (dilution_idx - 1))) +
     ggplot2::scale_y_continuous("Normalised Fluorescence", trans = "log10") +
