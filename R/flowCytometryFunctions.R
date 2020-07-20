@@ -157,7 +157,7 @@ process_fcs_dir <-
         get_bacteria(prepped_flow_frame, pre_cleaned)
       try(if (bacteria_flow_frame == 0) {
         print("No bacteria found in negative control .fcs file")
-      })
+      }, silent = T)
       # if we haven't found bacteria move on to the next flow frame
 
       ## Try to remove doublets
@@ -332,7 +332,7 @@ get_calibration <-
       level = 0.8
     )
 
-    singlet_beads <- log10_bead_frame[singlet_cluster,]
+    singlet_beads <- log10_bead_frame[singlet_cluster, ]
 
     singlet_plot <- ggplot2::ggplot() +
       ggplot2::geom_point(
@@ -359,6 +359,7 @@ get_calibration <-
       units = "mm"
     )
 
+
     calibration_parameters <- c()
     for (i in seq_len(length(peak_channels))) {
       hist_plt <- ggplot2::ggplot() +
@@ -380,41 +381,41 @@ get_calibration <-
                                     trans = "log10") +
         ggplot2::theme_bw(base_size = 8)
 
-      # find peaks --------------------------------------------------------------
+      # find peaks ------------------------------------------------------------
       if (is.na(manual_peaks)) {
         ## find peaks based on density estimate
         dens_d <-
           stats::density(log10(singlet_beads@exprs[, peak_channels[i]]),
                          bw = bead_dens_bw)
         peak_table <-
-          data.frame(dens_d[c("x", "y")])[c(F, diff(diff(dens_d$y) >= 0) < 0),] ## get peaks and heights
-        peaks <-
+          data.frame(dens_d[c("x", "y")])[c(F, diff(diff(dens_d$y) >= 0) < 0), ] ## get peaks and heights
+        meas_peaks <-
           10 ^ dplyr::top_n(peak_table,
                             n = length(mef_peaks[[i]]$peaks),
                             wt = .data$y)$x ## select only as many peaks as we have defined
 
         hist_plt <- hist_plt +
-          ggplot2::geom_vline(xintercept = peaks,
+          ggplot2::geom_vline(xintercept = meas_peaks,
                               linetype = 2,
                               size = 0.2)
 
-        peaks <- peaks[-1]
+        meas_peaks <- meas_peaks
       } else {
         ## OR peaks are being manually identified
-        peaks <- NA
+        meas_peaks <- NA
         for (j in seq_len(length(manual_peaks))) {
           if (manual_peaks[[j]]$channel == peak_channels[i]) {
-            peaks <- 10 ^ (manual_peaks[[j]]$peaks)[-1]
+            meas_peaks <- 10 ^ (manual_peaks[[j]]$peaks)
             break
           }
         }
-        if (is.na(peaks)) {
+        if (is.na(meas_peaks)) {
           ## if we don't have calibration data, skip this channel
           next
         }
 
         hist_plt <- hist_plt +
-          ggplot2::geom_vline(xintercept = peaks,
+          ggplot2::geom_vline(xintercept = meas_peaks,
                               linetype = 2,
                               size = 0.2)
       }
@@ -422,7 +423,7 @@ get_calibration <-
       cal_peaks <- NA
       for (j in seq_len(length(mef_peaks))) {
         if (mef_peaks[[j]]$channel == peak_channels[i]) {
-          cal_peaks <- mef_peaks[[j]]$peaks[-1]
+          cal_peaks <- mef_peaks[[j]]$peaks
           break
         }
       }
@@ -431,17 +432,43 @@ get_calibration <-
         next
       }
 
-      ## flowCal model: log(cal_peaks + mef_auto) = m * log(peaks) + b
+      combined_peaks <- data.frame(idx = 1:length(cal_peaks),
+                                   measured = sort(meas_peaks),
+                                   calibrated = sort(cal_peaks))
+
+
+      ## check for saturated peaks
+      combined_peaks$valid <- T
+      sum_fold_change <- 0
+      for(j in 3:nrow(combined_peaks)){
+        meas_fold_change <- combined_peaks$measured[j] / combined_peaks$measured[j - 1]
+        expected_fold_change <- combined_peaks$calibrated[j] / combined_peaks$calibrated[j - 1]
+        sum_fold_change <- sum_fold_change + expected_fold_change
+
+        if(meas_fold_change < (expected_fold_change * 0.75)){
+          combined_peaks$valid[j] <- F
+        }
+      }
+
+      ## check 2nd peak
+      mean_fold_change <- sum_fold_change / (nrow(combined_peaks) - 2)
+      meas_fold_change <- combined_peaks$measured[2] / combined_peaks$measured[1]
+      if(meas_fold_change < (mean_fold_change * 0.75)){
+        combined_peaks$valid[2] <- F
+      }
+
+      ## remove invalid peaks
+      valid_peaks <- combined_peaks[combined_peaks$valid,][-1,]
+
+      ## flowCal model: log(calibrated + mef_auto) = m * log(measured) + b
       model <-
-        stats::nls(log(cal_peaks) ~ log(exp(b) * peaks ^ m - mef_auto),
+        stats::nls(log(calibrated) ~ log(exp(b) * measured ^ m - mef_auto),
+                   data = valid_peaks,
                    start = list(
                      m = 1,
                      b = 0,
-                     mef_auto = 0
+                     mef_auto = 1e3
                    ))
-
-      # model <-
-      #   stats::nls(cal_peaks ~ m * peaks + b, start = list(m = 1, b = 0))
 
       calibration_parameters <- rbind(
         calibration_parameters,
@@ -455,7 +482,8 @@ get_calibration <-
       new_data <- data.frame(peaks = 10 ^ seq(0, 6, len = 100))
 
       cal_plt <- ggplot2::ggplot() +
-        ggplot2::geom_point(ggplot2::aes(x = peaks, y = cal_peaks,
+        ggplot2::geom_point(ggplot2::aes(x = valid_peaks$measured,
+                                         y = valid_peaks$calibrated,
                                          fill = "beads")) +
         ggplot2::geom_line(ggplot2::aes(
           new_data$peaks,
@@ -551,7 +579,7 @@ get_bacteria <- function(flow_frame, pre_cleaned) {
     )
 
 
-    bact_flow_frame <- flow_frame[best_clusters,]
+    bact_flow_frame <- flow_frame[best_clusters, ]
 
     return(bact_flow_frame)
   } else {
@@ -615,7 +643,7 @@ get_bacteria <- function(flow_frame, pre_cleaned) {
         print("only debris found")
         bact_flow_frame <- 0
       } else {
-        bact_flow_frame <- flow_frame[best_clusters,]
+        bact_flow_frame <- flow_frame[best_clusters, ]
       }
     }
 
@@ -670,8 +698,9 @@ to_mef <-
 
         ## add calibrated fluorescence to the channel
         out_flow_frame@exprs[, "calFlu"] <-
-          exp(calibration_parameters[fl_idx,]$b) *
-          out_flow_frame@exprs[, flu] ^ calibration_parameters[fl_idx,]$m
+          sign(out_flow_frame@exprs[, flu]) *
+          exp(calibration_parameters[fl_idx, ]$b) *
+          abs(out_flow_frame@exprs[, flu]) ^ calibration_parameters[fl_idx, ]$m
 
         ## rename the channel
         calibrated_flu = paste("calibrated_", flu, sep = "")
@@ -687,8 +716,9 @@ to_mef <-
 
           ## add calibrated fluorescence to the channel
           out_flow_frame@exprs[, "calNormFlu"] <-
-            exp(calibration_parameters[fl_idx,]$b) *
-            out_flow_frame@exprs[, paste("normalised_", flu, sep = "")] ^ calibration_parameters[fl_idx,]$m
+            sign(out_flow_frame@exprs[, paste("normalised_", flu, sep = "")]) *
+            exp(calibration_parameters[fl_idx, ]$b) *
+            abs(out_flow_frame@exprs[, paste("normalised_", flu, sep = "")]) ^ calibration_parameters[fl_idx, ]$m
 
           ## rename the channel
           calibrated_flu = paste("calibrated_normalised_", flu, sep = "")
@@ -756,7 +786,6 @@ plot_trimming <-
         axis.line = ggplot2::element_line(),
         legend.title = ggplot2::element_blank()
       )
-
 
 
     # FSC-H vs SSC-H ----------------------------------------------------------
@@ -865,7 +894,7 @@ plot_trimming <-
       local({
         f_count <- f_count
         filt <- flu_channels[f_count]
-        plts[[f_count + 3]] <<- ggplot2::ggplot() +
+        flu_plt <- ggplot2::ggplot() +
           ggplot2::geom_density(
             data = as.data.frame(flow_frame[, filt]@exprs),
             ggplot2::aes(
@@ -874,8 +903,8 @@ plot_trimming <-
               fill = "all_data",
               colour = "all_data"
             ),
-            alpha = 0.4,
-            bw = 0.01
+            bw = 0.05,
+            alpha = 0.4
           ) +
           ggplot2::geom_density(
             data = as.data.frame(bacteria_flow_frame[, filt]@exprs),
@@ -885,8 +914,8 @@ plot_trimming <-
               fill = "bacteria",
               colour = "bacteria"
             ),
-            alpha = 0.4,
-            bw = 0.01
+            bw = 0.05,
+            alpha = 0.4
           ) +
           ggplot2::geom_density(
             data = as.data.frame(singlet_flow_frame[, filt]@exprs),
@@ -896,10 +925,9 @@ plot_trimming <-
               fill = "single_bacteria",
               colour = "single_bacteria"
             ),
-            alpha = 0.4,
-            bw = 0.01
+            bw = 0.05,
+            alpha = 0.4
           ) +
-          ggplot2::scale_x_continuous(filt, trans = "log10") +
           ggplot2::scale_colour_discrete(guide = F) +
           apatheme +
           ggplot2::theme(
@@ -908,7 +936,7 @@ plot_trimming <-
           )
 
         if (normalised) {
-          plts[[f_count + 3]] <<- plts[[f_count + 3]] +
+          flu_plt <- flu_plt +
             ggplot2::geom_density(
               data = as.data.frame(normalised_flow_frame[, paste("normalised_", filt, sep =
                                                                    "")]@exprs),
@@ -918,11 +946,11 @@ plot_trimming <-
                 fill = "normalised",
                 colour = "normalised"
               ),
-              alpha = 0.4,
-              bw = 0.01
+              bw = 0.05,
+              alpha = 0.4
             )
           if (calibrate) {
-            try(plts[[f_count + 3]] <<- plts[[f_count + 3]] +
+            try(flu_plt <- flu_plt +
                   ggplot2::geom_density(
                     data = as.data.frame(calibrated_flow_frame[, paste("calibrated_normalised_",
                                                                        filt,
@@ -935,13 +963,13 @@ plot_trimming <-
                       fill = "calibrated_normalised",
                       colour = "calibrated_normalised"
                     ),
-                    alpha = 0.4,
-                    bw = 0.01
+                    bw = 0.05,
+                    alpha = 0.4
                   ))
           }
         }
         if (calibrate) {
-          try(plts[[f_count + 3]] <<- plts[[f_count + 3]] +
+          try(flu_plt <- flu_plt +
                 ggplot2::geom_density(
                   data = as.data.frame(calibrated_flow_frame[, paste("calibrated_",
                                                                      filt,
@@ -954,18 +982,23 @@ plot_trimming <-
                     fill = "calibrated",
                     colour = "calibrated"
                   ),
-                  alpha = 0.4,
-                  bw = 0.01
+                  bw = 0.05,
+                  alpha = 0.4
                 ))
         }
 
         ## Grab the legend to use seperately
-        flu_legend <<- get_legend(plts[[f_count + 3]])
-        plts[[f_count + 3]] <<- plts[[f_count + 3]] +
+        flu_legend <<- get_legend(flu_plt)
+        flu_plt_main <- flu_plt +
+          ggplot2::scale_x_continuous(filt,
+                                      trans = "log10",
+                                      limits = c(1e0, 1e6)) +
           ggplot2::theme(legend.position = "none")
+
+        plts[[f_count + 3]] <<- flu_plt_main
       })
 
-    plts[[4 + length(flu_channels)]] <- flu_legend
+    plts[[length(flu_channels) + 4]] <- flu_legend
 
 
     # Assemble plots ----------------------------------------------------------
