@@ -204,20 +204,15 @@ process_fcs_dir <-
               na.rm = T
             ))
 
-          ## hack to create a new channel
-          normalised_flow_frame <-
-            flowCore::transform(normalised_flow_frame,
-                                normFlu = 1)
+          ## get normalised values for channel
+          normalised_values <- normalised_flow_frame@exprs[, flu] - neg_mean
 
-          ## add normalised fluorescence to the channel
-          normalised_flow_frame@exprs[, "normFlu"] <-
-            normalised_flow_frame@exprs[, flu] - neg_mean
+          ## convert to matrix form
+          normalised_matrix <- matrix(normalised_values,
+                 dimnames = list(NULL, paste("normalised_", flu, sep = "")))
 
-          ## rename the channel
-          normalised_flu = paste("normalised_", flu, sep = "")
-          old_names <- flowCore::colnames(normalised_flow_frame)
-          old_names[length(old_names)] <- normalised_flu
-          flowCore::colnames(normalised_flow_frame) <- old_names
+          ## append to flowFrame
+          normalised_flow_frame <- ff_append_cols(normalised_flow_frame, normalised_matrix)
         }
       }
 
@@ -691,40 +686,30 @@ to_mef <-
     for (flu in flu_channels) {
       fl_idx <- which(calibration_parameters$flu == flu)
       if (length(fl_idx) == 1) {
-        ## hack to create a new channel
-        out_flow_frame <-
-          flowCore::transform(out_flow_frame,
-                              calFlu = 1)
-
-        ## add calibrated fluorescence to the channel
-        out_flow_frame@exprs[, "calFlu"] <-
-          sign(out_flow_frame@exprs[, flu]) *
+        ## get calibrated values for channel
+        calibrated_values <- sign(out_flow_frame@exprs[, flu]) *
           exp(calibration_parameters[fl_idx, ]$b) *
           abs(out_flow_frame@exprs[, flu]) ^ calibration_parameters[fl_idx, ]$m
 
-        ## rename the channel
-        calibrated_flu = paste("calibrated_", flu, sep = "")
-        old_names <- flowCore::colnames(out_flow_frame)
-        old_names[length(old_names)] <- calibrated_flu
-        flowCore::colnames(out_flow_frame) <- old_names
+        ## convert to matrix form
+        calibrated_matrix <- matrix(calibrated_values,
+                                    dimnames = list(NULL, paste("calibrated_", flu, sep = "")))
+
+        ## append to flowFrame
+        out_flow_frame <- ff_append_cols(out_flow_frame, calibrated_matrix)
 
         if (normalise) {
-          ## hack to create a new channel
-          out_flow_frame <-
-            flowCore::transform(out_flow_frame,
-                                calNormFlu = 1)
-
-          ## add calibrated fluorescence to the channel
-          out_flow_frame@exprs[, "calNormFlu"] <-
-            sign(out_flow_frame@exprs[, paste("normalised_", flu, sep = "")]) *
+          ## get calibrated values for channel
+          calibrated_values <- sign(out_flow_frame@exprs[, paste("normalised_", flu, sep = "")]) *
             exp(calibration_parameters[fl_idx, ]$b) *
             abs(out_flow_frame@exprs[, paste("normalised_", flu, sep = "")]) ^ calibration_parameters[fl_idx, ]$m
 
-          ## rename the channel
-          calibrated_flu = paste("calibrated_normalised_", flu, sep = "")
-          old_names <- flowCore::colnames(out_flow_frame)
-          old_names[length(old_names)] <- calibrated_flu
-          flowCore::colnames(out_flow_frame) <- old_names
+          ## convert to matrix form
+          calibrated_matrix <- matrix(calibrated_values,
+                                      dimnames = list(NULL, paste("calibrated_normalised_", flu, sep = "")))
+
+          ## append to flowFrame
+          out_flow_frame <- ff_append_cols(out_flow_frame, calibrated_matrix)
         }
       }
     }

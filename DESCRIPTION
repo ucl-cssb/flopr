@@ -26,5 +26,6 @@ Imports:
   tidyr,
   broom,
   mgcv,
-  tidyselect
+  tidyselect,
+  checkmate
 RoxygenNote: 7.1.1
