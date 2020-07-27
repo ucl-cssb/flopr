@@ -456,14 +456,20 @@ get_calibration <-
       valid_peaks <- combined_peaks[combined_peaks$valid,][-1,]
 
       ## flowCal model: log(calibrated + mef_auto) = m * log(measured) + b
-      model <-
-        stats::nls(log(calibrated) ~ log(exp(b) * measured ^ m - mef_auto),
-                   data = valid_peaks,
-                   start = list(
-                     m = 1,
-                     b = 0,
-                     mef_auto = 1e3
-                   ))
+      model <- NA
+      while(is.na(model)){
+        try(model <-
+          stats::nls(log(calibrated) ~ log(exp(b) * measured ^ m - mef_auto),
+                     data = valid_peaks,
+                     start = list(
+                       m = stats::runif(1, min = -1, max = 2),
+                       b = stats::runif(1, min = -1, max = 1),
+                       mef_auto = stats::runif(1, min = -1e3, max = 1e3)
+                     )), silent = T)
+        # if(!is.na(model)){
+        #   break
+        # }
+      }
 
       calibration_parameters <- rbind(
         calibration_parameters,
@@ -654,14 +660,14 @@ get_bacteria <- function(flow_frame, pre_cleaned) {
 #'
 get_singlets <- function(flow_frame) {
   # ## method using function from openCYto package
-  # sg <- flowStats::singletGate(flow_frame, area = "SSC-A", height = "SSC-H",
-  #                              prediction_level = 0.95)
-  # fres <- flowCore::filter(flow_frame, sg)
-  # singlet_flow_frame <- flowCore::Subset(flow_frame, fres)
+  sg <- flowStats::singletGate(flow_frame, area = "SSC-A", height = "SSC-H",
+                               prediction_level = 0.90)
+  fres <- flowCore::filter(flow_frame, sg)
+  singlet_flow_frame <- flowCore::Subset(flow_frame, fres)
 
-  singlet_flow_frame <- flowCore::Subset(flow_frame,
-                                         ((flow_frame[, "SSC-H"]@exprs - flow_frame[, "SSC-A"]@exprs)[, 1]) ^
-                                           2 < 0.01)
+  # singlet_flow_frame <- flowCore::Subset(flow_frame,
+  #                                        ((flow_frame[, "SSC-H"]@exprs - flow_frame[, "SSC-A"]@exprs)[, 1]) ^
+  #                                          2 < 0.01)
 
   return(singlet_flow_frame)
 }
