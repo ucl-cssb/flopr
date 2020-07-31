@@ -11,7 +11,9 @@ editor_options:
   chunk_output_type: console
 ---
 
-
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
 
 
 ## Prerequisite Knowledge
@@ -23,8 +25,7 @@ We have attempted to make our software usable with minimal prior knowledge of th
 
 FlopR relies on several other R packages. Most of them are available through the "Comprehensive R Archive Network (CRAN)" which just means that they can be automatically installed. There are, however, a couple that need to be manually installed. To do this use the following commands:
 
-
-```r
+```{r eval=FALSE, message=FALSE, warning=FALSE, results='hide'}
 install.packages("devtools", repos = "https://cloud.r-project.org/")
 
 if (!requireNamespace("BiocManager", quietly = TRUE))
@@ -35,15 +36,13 @@ BiocManager::install(c("flowCore", "flowClust", "flowStats"))
 
 Once those packages have been installed we are ready to install FlopR.
 
-
-```r
+```{r eval=FALSE, message=FALSE, warning=FALSE, results='hide'}
 devtools::install_github("ucl-cssb/flopr")
 ```
 
 This grabs the latest version of FlopR from GitHub and builds it on your computer. If it installed successfully we should now be able to load the FlopR package in R.
 
-
-```r
+```{r eval=FALSE, message=FALSE, warning=FALSE, results='hide'}
 library(flopr)
 ```
 
@@ -57,21 +56,13 @@ The data produced by plate readers from different manufacturers comes in differe
 
 For a Tecan plate reader, the data is saved as an Excel .xls file. It first needs to be saved as a .csv file (open in Excel and "Save As" .csv) that can be read by R. We also need a .csv file telling us what is in each well of our microtitre plate. An example can be found in the "examples/plate_reader/DATA" folder, but the first few rows looks like this:
 
-
-```
-##     calibrant fluorophore media concentration replicate well
-## 1 fluorescein         GFP   PBS       10.0000         1   A1
-## 2 fluorescein         GFP   PBS        5.0000         1   A2
-## 3 fluorescein         GFP   PBS        2.5000         1   A3
-## 4 fluorescein         GFP   PBS        1.2500         1   A4
-## 5 fluorescein         GFP   PBS        0.6250         1   A5
-## 6 fluorescein         GFP   PBS        0.3125         1   A6
+```{r echo=FALSE}
+head(read.csv("examples/plate_reader/DATA/calibration_plate_layout.csv"))
 ```
 
 Once we have the calibration data and layout .csv files we can parse the data.
 
-
-```r
+```{r eval=FALSE}
 flopr::spark_parse(data_csv = "examples/plate_reader/DATA/191219_calibration_membrane.csv",
                    layout_csv = "examples/plate_reader/DATA/calibration_plate_layout.csv",
                    timeseries = FALSE)
@@ -81,51 +72,31 @@ The `data_csv` argument takes the path to the calibration data. `layout_csv` is 
 
 The `spark_parse()` function saves the parsed calibration data in a new .csv file, in the same location as the calibration data, with "_parsed" appended to the filename. The first few rows look like this:
 
-
-```
-##     calibrant fluorophore media concentration replicate well  OD600  OD700
-## 1 fluorescein         GFP   PBS       10.0000         1   A1 0.0921 0.0831
-## 2 fluorescein         GFP   PBS        5.0000         1   A2 0.0942 0.0852
-## 3 fluorescein         GFP   PBS        2.5000         1   A3 0.1015 0.0928
-## 4 fluorescein         GFP   PBS        1.2500         1   A4 0.0985 0.0899
-## 5 fluorescein         GFP   PBS        0.6250         1   A5 0.0957 0.0905
-## 6 fluorescein         GFP   PBS        0.3125         1   A6 0.1027 0.0965
-##   GFP 40 GFP 50 GFP 60 GFP 70 GFP 80 GFP 90 GFP 100 GFP 110 GFP 120 row column
-## 1   1830   9811  36911     NA     NA     NA      NA      NA      NA   A      1
-## 2    932   4993  19221  54510     NA     NA      NA      NA      NA   A      2
-## 3    453   2434   9448  27864     NA     NA      NA      NA      NA   A      3
-## 4    232   1253   4853  14513  36349     NA      NA      NA      NA   A      4
-## 5    114    617   2404   7128  18282  41812      NA      NA      NA   A      5
-## 6     54    294   1137   3388   8672  20095   42244      NA      NA   A      6
+```{r echo=FALSE}
+head(read.csv("examples/plate_reader/DATA/191219_calibration_membrane_parsed.csv", check.names = FALSE))
 ```
 
 The parser has extracted the information we need from the calibration data and merged it with the plate layout information so that we now have columns containing each of the measurements for each well.
 
 Now we can actually calculate our calibration coefficients. To do this we just need to use one function and give it our parsed data.
 
-
-```r
+```{r eval=FALSE}
 flopr::generate_cfs(calibration_csv = "examples/plate_reader/DATA/191219_calibration_membrane_parsed.csv")
 ```
 
 For details about how this process works, you can read our paper [here](). At the end, there should be two .pdf images showing the calibration curves for absorbance and fluorescence, along with a new .csv file, appended with "_cfs", containing the parameters for use in the future, the first few rows of which look like this:
 
-
-```
-##           cf          beta   calibrant fluorophore measure
-## 1   184.7274  0.0057475962 fluorescein         GFP  GFP 40
-## 2   996.4472 -0.0035423519 fluorescein         GFP  GFP 50
-## 3  3821.0497 -0.0004737143 fluorescein         GFP  GFP 60
-## 4 11298.9531  0.0002015276 fluorescein         GFP  GFP 70
-## 5 29128.3783 -0.0007481215 fluorescein         GFP  GFP 80
-## 6 65834.9342  0.0012750817 fluorescein         GFP  GFP 90
+```{r echo=FALSE}
+head(read.csv("examples/plate_reader/DATA/191219_calibration_membrane_parsed_cfs.csv", check.names = FALSE))
 ```
 
 The "cf" column contains the calibration coefficients that will be used to calibrate our data in later experiments.
 
 Before we get too excited we need to check the images to make sure that the calibration curves look sensible. The software attempts to remove data points which it deems are invalid, but this process isn't perfect and occasionally may need you to remove data points from the "*_parsed.csv" file. Using the example data, you can see (in the image below) that some of the fluorescein wells are considered valid absorbance measurements. In this case, it isn't the end of the world since we would never use the parameters produced from those two curves.
 
-<embed src="examples/plate_reader/DATA/191219_calibration_membrane_parsed_absorbance_cfs.pdf" style="display: block; margin: auto;" type="application/pdf" />
+```{r echo=FALSE, message=FALSE, include=TRUE, fig.align='center'}
+knitr::include_graphics("examples/plate_reader/DATA/191219_calibration_membrane_parsed_absorbance_cfs.pdf")
+```
 
 n.b. Currently the software is setup to work with "microspheres" for calibrating cell number and "fluorescein" for calibrating GFP fluorescence. We hope to extend it in the near future to work with other calibrants.
 
@@ -134,28 +105,13 @@ n.b. Currently the software is setup to work with "microspheres" for calibrating
 
 As mentioned above, because plate readers from different manufacturers save the data in different formats, the first step we need to do is parse our raw data. The parser that we provide takes Tecan plate reader data in the form of a .csv file. We also need a .csv file telling us what is in each well of you microtitre plate. This can include any information that you wish; we include as much meta-data as possible as it makes our data analysis later much smoother. The only requirement is that **the last column must be named "well"** and include an identifier (usually the well id i.e. B2) that can be matched to the same identifier in the plate reader data. Here's an example where we include information about the strains, plasmids, media, inducers, etc.:
 
-
-```
-##   strain host plasmid plasmid_2 strain_2 media sugar amino_acids inducer
-## 1                                                                       
-## 2                                                                       
-## 3                                                                       
-## 4                                                                       
-## 5                                                                       
-## 6                                                                       
-##   concentration init_ratio init_dilution well
-## 1            NA         NA            NA   A1
-## 2            NA         NA            NA   A2
-## 3            NA         NA            NA   A3
-## 4            NA         NA            NA   A4
-## 5            NA         NA            NA   A5
-## 6            NA         NA            NA   A6
+```{r echo=FALSE}
+head(read.csv("examples/plate_reader/DATA/200228_example_layout.csv", check.names = FALSE))
 ```
 
 Now we can use our parsing function.
 
-
-```r
+```{r eval=FALSE}
 flopr::spark_parse(data_csv = "examples/plate_reader/DATA/200228_example_data.csv",
                    layout_csv = "examples/plate_reader/DATA/200228_example_layout.csv",
                    timeseries = TRUE)
@@ -165,8 +121,7 @@ The data is extracted and the meta-data from the layout is attached. Note that t
 
 Now we can start processing our data. There is one function that does all the work for: `process_plate()`. There are a few arguments that we need to give the function which will control what happens.
 
-
-```r
+```{r eval=FALSE}
 flopr::process_plate(data_csv = "examples/plate_reader/DATA/200228_example_data_parsed.csv",
                      blank_well = c("C12", "D12"),
                      neg_well = c("C6", "D6", "E6"),
@@ -215,8 +170,7 @@ We have two functions for processing flow cytometry data:
 ### Process a single .fcs file
 To process a single .fcs file we can run the following command:
 
-
-```r
+```{r eval=FALSE}
 flopr::process_fcs(fcs_file = "examples/flow_cytometry/DATA/20191121/pWeak_None_0_1.fcs",
                    flu_channels = "BL1-H",
                    pre_cleaned = TRUE,
@@ -232,13 +186,14 @@ We need to give the function four bits of information
 
 In the end we have a new .fcs file with "_processed" appended to the filename, and if you asked the function to save a plot we will have a .pdf that looks something like this:
 
-<embed src="examples/flow_cytometry/DATA/20191121/pWeak_None_0_1_processed_processed.pdf" style="display: block; margin: auto;" type="application/pdf" />
+```{r echo=FALSE, message=FALSE, include=TRUE, fig.align='center'}
+knitr::include_graphics("examples/flow_cytometry/DATA/20191121/pWeak_None_0_1_processed_processed.pdf")
+```
 
 ### Process a folder of .fcs files
 It's much more likely that we have more than one sample that we want to process. This is where the other function comes in handy. There are a few more arguments that we need to give it and some of them might look a bit complicated, but let's have a look.
 
-
-```r
+```{r eval=FALSE}
 flopr::process_fcs_dir(dir_path = "examples/flow_cytometry/DATA/20191121",
                        pattern = "*Med*.fcs",
                        flu_channels = "BL1-H",
@@ -260,8 +215,7 @@ There are a few more arguments to this function and some of them look a bit comp
 - `neg_fcs` is the filename of your negative control sample. It must be in the folder with the other .fcs files. This is used to normalise autofluorescence. If you don't specify a filename here, the processing will be carried out without any normalisation steps.
 - `calibrate` tells the function whether you want to calibrate the fluorescence measurements. To be able to calibrate you must have an .fcs file with data from calibration beads and it must have "beads" somewhere in the filename. For discussion about calibration beads, read our paper or check out [TASBE](https://tasbe.github.io/) and [FlowCal](https://taborlab.github.io/FlowCal/).
 - `mef_peaks` is where we tell the function what the true fluorophore values are for our beads. These will be available from the bead manufacturer. We need to specify peaks for each of the channels that we want to calibrate and the channel name needs to correspond to one given in `flu_channels`. Here we are just calibrating the "BL1-H" channel which corresponds to GFP on our flow cytometer. If you wanted to calibrate two channels it would look something like this: 
-
-```r
+```{r eval=FALSE}
 mef_peaks = list(list(channel = "BL1-H", 
                       peaks = c(0, 822, 2114, 5911, 17013, 41837, 145365, 287558)),
                  list(channel = "YL2-H",
