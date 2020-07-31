@@ -434,9 +434,13 @@ by negating the geometric mean of the negative control’s fluorescence in
 each channel from each of the other samples. Finally, if the files are
 going to be calibrated, a calibration curve is fit to the bead peaks in
 each of the fluorescence channels in `mef_peaks`. We use a model
-developed for FlowCal for our calibration curve. The new data and any
-plots produced will be saved to a new folder with the same name as the
-original but with "\_processed" appended.
+developed for FlowCal for our calibration curve. We then calibrate both
+the raw and normalised data since normalisation can produce fluorescence
+values less than or equal to 0, which get removed during calibration due
+to working with logged data. The new data, any plots produced, and a
+data\_summary.csv file (containing geometric statistics for each .fcs
+file) will be saved to a new folder with the same name as the original
+but with "\_processed" appended.
 
 There are a few checks that should be made to reassure yourself that
 everything has worked.
