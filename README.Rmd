@@ -92,11 +92,7 @@ head(read.csv("examples/plate_reader/DATA/191219_calibration_membrane_parsed_cfs
 
 The "cf" column contains the calibration coefficients that will be used to calibrate our data in later experiments.
 
-Before we get too excited we need to check the images to make sure that the calibration curves look sensible. The software attempts to remove data points which it deems are invalid, but this process isn't perfect and occasionally may need you to remove data points from the "*_parsed.csv" file. Using the example data, you can see (in the image below) that some of the fluorescein wells are considered valid absorbance measurements. In this case, it isn't the end of the world since we would never use the parameters produced from those two curves.
-
-```{r echo=FALSE, message=FALSE, include=TRUE, fig.align='center'}
-knitr::include_graphics("examples/plate_reader/DATA/191219_calibration_membrane_parsed_absorbance_cfs.pdf")
-```
+Before we get too excited we need to check the images to make sure that the calibration curves look sensible. The software attempts to remove data points which it deems are invalid, but this process isn't perfect and occasionally may need you to remove data points from the "*_parsed.csv" file. Using the example data, you can see ([here](examples/plate_reader/DATA/191219_calibration_membrane_parsed_absorbance_cfs.pdf)) that some of the fluorescein wells are considered valid absorbance measurements. In this case, it isn't the end of the world since we would never use the parameters produced from those two curves.
 
 n.b. Currently the software is setup to work with "microspheres" for calibrating cell number and "fluorescein" for calibrating GFP fluorescence. We hope to extend it in the near future to work with other calibrants.
 
@@ -184,11 +180,7 @@ We need to give the function four bits of information
 - `pre_cleaned` lets the function know if you have gated out debris on the flow cytometer. Most people do this when running their experiments by setting a threshold on forward-scatter and side-scatter. But some people like to record everything and process the data later.
 - `do_plot` lets the function know if you want a plot to be saved of the trimming process.
 
-In the end we have a new .fcs file with "_processed" appended to the filename, and if you asked the function to save a plot we will have a .pdf that looks something like this:
-
-```{r echo=FALSE, message=FALSE, include=TRUE, fig.align='center'}
-knitr::include_graphics("examples/flow_cytometry/DATA/20191121/pWeak_None_0_1_processed_processed.pdf")
-```
+In the end we have a new .fcs file with "_processed" appended to the filename, and if you asked the function to save a plot we will have a .pdf that looks something like [this](examples/flow_cytometry/DATA/20191121/pWeak_None_0_1_processed_processed.pdf).
 
 ### Process a folder of .fcs files
 It's much more likely that we have more than one sample that we want to process. This is where the other function comes in handy. There are a few more arguments that we need to give it and some of them might look a bit complicated, but let's have a look.
