@@ -113,7 +113,7 @@ The "cf" column contains the calibration coefficients that will be used to calib
 
 Before we get too excited we need to check the images to make sure that the calibration curves look sensible. The software attempts to remove data points which it deems are invalid, but this process isn't perfect and occasionally may need you to remove data points from the "*_parsed.csv" file. Using the example data, you can see (in the image below) that some of the fluorescein wells are considered valid absorbance measurements. In this case, it isn't the end of the world since we would never use the parameters produced from those two curves.
 
-<embed src="examples/plate_reader/DATA/191219_calibration_membrane_parsed_absorbance_cfs.pdf" style="display: block; margin: auto;" type="application/pdf" />
+![](examples/plate_reader/DATA/191219_calibration_membrane_parsed_absorbance_cfs.pdf)
 
 n.b. Currently the software is setup to work with "microspheres" for calibrating cell number and "fluorescein" for calibrating GFP fluorescence. We hope to extend it in the near future to work with other calibrants.
 
@@ -215,7 +215,7 @@ We need to give the function four bits of information
 
 In the end we have a new .fcs file with "_processed" appended to the filename, and if you asked the function to save a plot we will have a .pdf that looks something like this:
 
-<embed src="examples/flow_cytometry/DATA/20191121/pWeak_None_0_1_processed_processed.pdf" style="display: block; margin: auto;" type="application/pdf" />
+![](examples/flow_cytometry/DATA/20191121/pWeak_None_0_1_processed_processed.pdf)
 
 ### Process a folder of .fcs files
 It's much more likely that we have more than one sample that we want to process. This is where the other function comes in handy. There are a few more arguments that we need to give it and some of them might look a bit complicated, but let's have a look.
@@ -257,21 +257,3 @@ There are a few checks that should be made to reassure yourself that everything 
 
 - To confirm correct trimming, we recommend setting `do_plot = TRUE` so that you can see which events have been removed during processing. Check that the debris, if there is any, and doublets have been correctly identified and removed.
 - For each fluorescence calibration channel, a plot will be saved showing the bead peaks that have been identified and the calibration curve that we have fit to them. Sometime the bead peaks aren't identified correctly. In this case, there is another argument that the function can take `beads_dens_bw`, which has a default value of `0.025`. To identify the beads we use something called a Gaussian kernel to smooth the fluorescence data and pick the highest points. Sometimes this smoothing isn't quite right; we might not smooth enough and one peak is identified as two, or we smooth too much and lose peaks. In the former case we need to increase `beads_dens_bw` and in the latter we decrease it. If tweaking this value doesn't work, we also provide a way to manually specify identify the peaks using the `manual_peaks` argument.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
