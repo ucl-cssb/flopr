@@ -4,9 +4,9 @@ author: "Alex J H Fedorec"
 date: "30/07/2020"
 output: 
   html_document: 
-    toc: yes
     fig_height: 7
     keep_md: yes
+    df_print: kable
 editor_options: 
   chunk_output_type: console
 ---

@@ -1,18 +1,7 @@
----
-title: "Using FlopR"
+
+# "Using FlopR"
 author: "Alex J H Fedorec"
 date: "30/07/2020"
-output: 
-  html_document: 
-    toc: yes
-    fig_height: 7
-    keep_md: yes
-editor_options: 
-  chunk_output_type: console
----
-
-
-
 
 ## Prerequisite Knowledge
 
@@ -57,16 +46,18 @@ The data produced by plate readers from different manufacturers comes in differe
 
 For a Tecan plate reader, the data is saved as an Excel .xls file. It first needs to be saved as a .csv file (open in Excel and "Save As" .csv) that can be read by R. We also need a .csv file telling us what is in each well of our microtitre plate. An example can be found in the "examples/plate_reader/DATA" folder, but the first few rows looks like this:
 
+<div class="kable-table">
 
-```
-##     calibrant fluorophore media concentration replicate well
-## 1 fluorescein         GFP   PBS       10.0000         1   A1
-## 2 fluorescein         GFP   PBS        5.0000         1   A2
-## 3 fluorescein         GFP   PBS        2.5000         1   A3
-## 4 fluorescein         GFP   PBS        1.2500         1   A4
-## 5 fluorescein         GFP   PBS        0.6250         1   A5
-## 6 fluorescein         GFP   PBS        0.3125         1   A6
-```
+|calibrant   |fluorophore |media | concentration| replicate|well |
+|:-----------|:-----------|:-----|-------------:|---------:|:----|
+|fluorescein |GFP         |PBS   |       10.0000|         1|A1   |
+|fluorescein |GFP         |PBS   |        5.0000|         1|A2   |
+|fluorescein |GFP         |PBS   |        2.5000|         1|A3   |
+|fluorescein |GFP         |PBS   |        1.2500|         1|A4   |
+|fluorescein |GFP         |PBS   |        0.6250|         1|A5   |
+|fluorescein |GFP         |PBS   |        0.3125|         1|A6   |
+
+</div>
 
 Once we have the calibration data and layout .csv files we can parse the data.
 
@@ -81,23 +72,18 @@ The `data_csv` argument takes the path to the calibration data. `layout_csv` is 
 
 The `spark_parse()` function saves the parsed calibration data in a new .csv file, in the same location as the calibration data, with "_parsed" appended to the filename. The first few rows look like this:
 
+<div class="kable-table">
 
-```
-##     calibrant fluorophore media concentration replicate well  OD600  OD700
-## 1 fluorescein         GFP   PBS       10.0000         1   A1 0.0921 0.0831
-## 2 fluorescein         GFP   PBS        5.0000         1   A2 0.0942 0.0852
-## 3 fluorescein         GFP   PBS        2.5000         1   A3 0.1015 0.0928
-## 4 fluorescein         GFP   PBS        1.2500         1   A4 0.0985 0.0899
-## 5 fluorescein         GFP   PBS        0.6250         1   A5 0.0957 0.0905
-## 6 fluorescein         GFP   PBS        0.3125         1   A6 0.1027 0.0965
-##   GFP 40 GFP 50 GFP 60 GFP 70 GFP 80 GFP 90 GFP 100 GFP 110 GFP 120 row column
-## 1   1830   9811  36911     NA     NA     NA      NA      NA      NA   A      1
-## 2    932   4993  19221  54510     NA     NA      NA      NA      NA   A      2
-## 3    453   2434   9448  27864     NA     NA      NA      NA      NA   A      3
-## 4    232   1253   4853  14513  36349     NA      NA      NA      NA   A      4
-## 5    114    617   2404   7128  18282  41812      NA      NA      NA   A      5
-## 6     54    294   1137   3388   8672  20095   42244      NA      NA   A      6
-```
+|calibrant   |fluorophore |media | concentration| replicate|well |  OD600|  OD700| GFP 40| GFP 50| GFP 60| GFP 70| GFP 80| GFP 90| GFP 100| GFP 110| GFP 120|row | column|
+|:-----------|:-----------|:-----|-------------:|---------:|:----|------:|------:|------:|------:|------:|------:|------:|------:|-------:|-------:|-------:|:---|------:|
+|fluorescein |GFP         |PBS   |       10.0000|         1|A1   | 0.0921| 0.0831|   1830|   9811|  36911|     NA|     NA|     NA|      NA|      NA|      NA|A   |      1|
+|fluorescein |GFP         |PBS   |        5.0000|         1|A2   | 0.0942| 0.0852|    932|   4993|  19221|  54510|     NA|     NA|      NA|      NA|      NA|A   |      2|
+|fluorescein |GFP         |PBS   |        2.5000|         1|A3   | 0.1015| 0.0928|    453|   2434|   9448|  27864|     NA|     NA|      NA|      NA|      NA|A   |      3|
+|fluorescein |GFP         |PBS   |        1.2500|         1|A4   | 0.0985| 0.0899|    232|   1253|   4853|  14513|  36349|     NA|      NA|      NA|      NA|A   |      4|
+|fluorescein |GFP         |PBS   |        0.6250|         1|A5   | 0.0957| 0.0905|    114|    617|   2404|   7128|  18282|  41812|      NA|      NA|      NA|A   |      5|
+|fluorescein |GFP         |PBS   |        0.3125|         1|A6   | 0.1027| 0.0965|     54|    294|   1137|   3388|   8672|  20095|   42244|      NA|      NA|A   |      6|
+
+</div>
 
 The parser has extracted the information we need from the calibration data and merged it with the plate layout information so that we now have columns containing each of the measurements for each well.
 
@@ -110,16 +96,18 @@ flopr::generate_cfs(calibration_csv = "examples/plate_reader/DATA/191219_calibra
 
 For details about how this process works, you can read our paper [here](). At the end, there should be two .pdf images showing the calibration curves for absorbance and fluorescence, along with a new .csv file, appended with "_cfs", containing the parameters for use in the future, the first few rows of which look like this:
 
+<div class="kable-table">
 
-```
-##           cf          beta   calibrant fluorophore measure
-## 1   184.7274  0.0057475962 fluorescein         GFP  GFP 40
-## 2   996.4472 -0.0035423519 fluorescein         GFP  GFP 50
-## 3  3821.0497 -0.0004737143 fluorescein         GFP  GFP 60
-## 4 11298.9531  0.0002015276 fluorescein         GFP  GFP 70
-## 5 29128.3783 -0.0007481215 fluorescein         GFP  GFP 80
-## 6 65834.9342  0.0012750817 fluorescein         GFP  GFP 90
-```
+|         cf|       beta|calibrant   |fluorophore |measure |
+|----------:|----------:|:-----------|:-----------|:-------|
+|   184.7274|  0.0057476|fluorescein |GFP         |GFP 40  |
+|   996.4472| -0.0035424|fluorescein |GFP         |GFP 50  |
+|  3821.0497| -0.0004737|fluorescein |GFP         |GFP 60  |
+| 11298.9531|  0.0002015|fluorescein |GFP         |GFP 70  |
+| 29128.3783| -0.0007481|fluorescein |GFP         |GFP 80  |
+| 65834.9342|  0.0012751|fluorescein |GFP         |GFP 90  |
+
+</div>
 
 The "cf" column contains the calibration coefficients that will be used to calibrate our data in later experiments.
 
@@ -134,23 +122,18 @@ n.b. Currently the software is setup to work with "microspheres" for calibrating
 
 As mentioned above, because plate readers from different manufacturers save the data in different formats, the first step we need to do is parse our raw data. The parser that we provide takes Tecan plate reader data in the form of a .csv file. We also need a .csv file telling us what is in each well of you microtitre plate. This can include any information that you wish; we include as much meta-data as possible as it makes our data analysis later much smoother. The only requirement is that **the last column must be named "well"** and include an identifier (usually the well id i.e. B2) that can be matched to the same identifier in the plate reader data. Here's an example where we include information about the strains, plasmids, media, inducers, etc.:
 
+<div class="kable-table">
 
-```
-##   strain host plasmid plasmid_2 strain_2 media sugar amino_acids inducer
-## 1                                                                       
-## 2                                                                       
-## 3                                                                       
-## 4                                                                       
-## 5                                                                       
-## 6                                                                       
-##   concentration init_ratio init_dilution well
-## 1            NA         NA            NA   A1
-## 2            NA         NA            NA   A2
-## 3            NA         NA            NA   A3
-## 4            NA         NA            NA   A4
-## 5            NA         NA            NA   A5
-## 6            NA         NA            NA   A6
-```
+|strain |host |plasmid |plasmid_2 |strain_2 |media |sugar |amino_acids |inducer | concentration| init_ratio| init_dilution|well |
+|:------|:----|:-------|:---------|:--------|:-----|:-----|:-----------|:-------|-------------:|----------:|-------------:|:----|
+|       |     |        |          |         |      |      |            |        |            NA|         NA|            NA|A1   |
+|       |     |        |          |         |      |      |            |        |            NA|         NA|            NA|A2   |
+|       |     |        |          |         |      |      |            |        |            NA|         NA|            NA|A3   |
+|       |     |        |          |         |      |      |            |        |            NA|         NA|            NA|A4   |
+|       |     |        |          |         |      |      |            |        |            NA|         NA|            NA|A5   |
+|       |     |        |          |         |      |      |            |        |            NA|         NA|            NA|A6   |
+
+</div>
 
 Now we can use our parsing function.
 

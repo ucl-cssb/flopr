@@ -368,20 +368,6 @@ summary {
 
 </div>
 
-<div id="TOC">
-<ul>
-<li><a href="#prerequisite-knowledge">Prerequisite Knowledge</a></li>
-<li><a href="#installation">Installation</a></li>
-<li><a href="#plate-reader-calibration">Plate Reader Calibration</a></li>
-<li><a href="#processing-plate-reader-data">Processing Plate Reader Data</a><ul>
-<li><a href="#autofluorescence-normalisation-details">Autofluorescence normalisation details</a></li>
-</ul></li>
-<li><a href="#flow-cytometry-processing">Flow Cytometry Processing</a><ul>
-<li><a href="#process-a-single-.fcs-file">Process a single .fcs file</a></li>
-<li><a href="#process-a-folder-of-.fcs-files">Process a folder of .fcs files</a></li>
-</ul></li>
-</ul>
-</div>
 
 <div id="prerequisite-knowledge" class="section level2">
 <h2>Prerequisite Knowledge</h2>
@@ -407,44 +393,313 @@ BiocManager::install(c(&quot;flowCore&quot;, &quot;flowClust&quot;, &quot;flowSt
 <p>The experimental protocols for producing absorbance and fluorescence calibration data can be found <a href="https://www.protocols.io/workspaces/igem-measurement">here</a>.</p>
 <p>The data produced by plate readers from different manufacturers comes in different formats. The first step we need to do is to “parse” the data from the plate reader into a standard format. We have written an example parser for use with data from Tecan plate readers. If you need help writing a parser for your plate reader, please contact us and we’ll see what we can do.</p>
 <p>For a Tecan plate reader, the data is saved as an Excel .xls file. It first needs to be saved as a .csv file (open in Excel and “Save As” .csv) that can be read by R. We also need a .csv file telling us what is in each well of our microtitre plate. An example can be found in the “examples/plate_reader/DATA” folder, but the first few rows looks like this:</p>
-<pre><code>##     calibrant fluorophore media concentration replicate well
-## 1 fluorescein         GFP   PBS       10.0000         1   A1
-## 2 fluorescein         GFP   PBS        5.0000         1   A2
-## 3 fluorescein         GFP   PBS        2.5000         1   A3
-## 4 fluorescein         GFP   PBS        1.2500         1   A4
-## 5 fluorescein         GFP   PBS        0.6250         1   A5
-## 6 fluorescein         GFP   PBS        0.3125         1   A6</code></pre>
+<div class="kable-table">
+<table>
+<thead>
+<tr class="header">
+<th align="left">calibrant</th>
+<th align="left">fluorophore</th>
+<th align="left">media</th>
+<th align="right">concentration</th>
+<th align="right">replicate</th>
+<th align="left">well</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">fluorescein</td>
+<td align="left">GFP</td>
+<td align="left">PBS</td>
+<td align="right">10.0000</td>
+<td align="right">1</td>
+<td align="left">A1</td>
+</tr>
+<tr class="even">
+<td align="left">fluorescein</td>
+<td align="left">GFP</td>
+<td align="left">PBS</td>
+<td align="right">5.0000</td>
+<td align="right">1</td>
+<td align="left">A2</td>
+</tr>
+<tr class="odd">
+<td align="left">fluorescein</td>
+<td align="left">GFP</td>
+<td align="left">PBS</td>
+<td align="right">2.5000</td>
+<td align="right">1</td>
+<td align="left">A3</td>
+</tr>
+<tr class="even">
+<td align="left">fluorescein</td>
+<td align="left">GFP</td>
+<td align="left">PBS</td>
+<td align="right">1.2500</td>
+<td align="right">1</td>
+<td align="left">A4</td>
+</tr>
+<tr class="odd">
+<td align="left">fluorescein</td>
+<td align="left">GFP</td>
+<td align="left">PBS</td>
+<td align="right">0.6250</td>
+<td align="right">1</td>
+<td align="left">A5</td>
+</tr>
+<tr class="even">
+<td align="left">fluorescein</td>
+<td align="left">GFP</td>
+<td align="left">PBS</td>
+<td align="right">0.3125</td>
+<td align="right">1</td>
+<td align="left">A6</td>
+</tr>
+</tbody>
+</table>
+</div>
 <p>Once we have the calibration data and layout .csv files we can parse the data.</p>
 <pre class="r"><code>flopr::spark_parse(data_csv = &quot;examples/plate_reader/DATA/191219_calibration_membrane.csv&quot;,
                    layout_csv = &quot;examples/plate_reader/DATA/calibration_plate_layout.csv&quot;,
                    timeseries = FALSE)</code></pre>
 <p>The <code>data_csv</code> argument takes the path to the calibration data. <code>layout_csv</code> is the path to the plate layout .csv file. Finally, the Tecan plate readers save timeseries data differently from single timepoint data, so we have a Boolean flag, <code>timeseries</code>, that lets the parser know that this is not a timeseries.</p>
 <p>The <code>spark_parse()</code> function saves the parsed calibration data in a new .csv file, in the same location as the calibration data, with &quot;_parsed&quot; appended to the filename. The first few rows look like this:</p>
-<pre><code>##     calibrant fluorophore media concentration replicate well  OD600  OD700
-## 1 fluorescein         GFP   PBS       10.0000         1   A1 0.0921 0.0831
-## 2 fluorescein         GFP   PBS        5.0000         1   A2 0.0942 0.0852
-## 3 fluorescein         GFP   PBS        2.5000         1   A3 0.1015 0.0928
-## 4 fluorescein         GFP   PBS        1.2500         1   A4 0.0985 0.0899
-## 5 fluorescein         GFP   PBS        0.6250         1   A5 0.0957 0.0905
-## 6 fluorescein         GFP   PBS        0.3125         1   A6 0.1027 0.0965
-##   GFP 40 GFP 50 GFP 60 GFP 70 GFP 80 GFP 90 GFP 100 GFP 110 GFP 120 row column
-## 1   1830   9811  36911     NA     NA     NA      NA      NA      NA   A      1
-## 2    932   4993  19221  54510     NA     NA      NA      NA      NA   A      2
-## 3    453   2434   9448  27864     NA     NA      NA      NA      NA   A      3
-## 4    232   1253   4853  14513  36349     NA      NA      NA      NA   A      4
-## 5    114    617   2404   7128  18282  41812      NA      NA      NA   A      5
-## 6     54    294   1137   3388   8672  20095   42244      NA      NA   A      6</code></pre>
+<div class="kable-table">
+<table style="width:100%;">
+<colgroup>
+<col width="8%"></col>
+<col width="8%"></col>
+<col width="4%"></col>
+<col width="9%"></col>
+<col width="6%"></col>
+<col width="3%"></col>
+<col width="4%"></col>
+<col width="4%"></col>
+<col width="4%"></col>
+<col width="4%"></col>
+<col width="4%"></col>
+<col width="4%"></col>
+<col width="4%"></col>
+<col width="4%"></col>
+<col width="5%"></col>
+<col width="5%"></col>
+<col width="5%"></col>
+<col width="2%"></col>
+<col width="4%"></col>
+</colgroup>
+<thead>
+<tr class="header">
+<th align="left">calibrant</th>
+<th align="left">fluorophore</th>
+<th align="left">media</th>
+<th align="right">concentration</th>
+<th align="right">replicate</th>
+<th align="left">well</th>
+<th align="right">OD600</th>
+<th align="right">OD700</th>
+<th align="right">GFP 40</th>
+<th align="right">GFP 50</th>
+<th align="right">GFP 60</th>
+<th align="right">GFP 70</th>
+<th align="right">GFP 80</th>
+<th align="right">GFP 90</th>
+<th align="right">GFP 100</th>
+<th align="right">GFP 110</th>
+<th align="right">GFP 120</th>
+<th align="left">row</th>
+<th align="right">column</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">fluorescein</td>
+<td align="left">GFP</td>
+<td align="left">PBS</td>
+<td align="right">10.0000</td>
+<td align="right">1</td>
+<td align="left">A1</td>
+<td align="right">0.0921</td>
+<td align="right">0.0831</td>
+<td align="right">1830</td>
+<td align="right">9811</td>
+<td align="right">36911</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="left">A</td>
+<td align="right">1</td>
+</tr>
+<tr class="even">
+<td align="left">fluorescein</td>
+<td align="left">GFP</td>
+<td align="left">PBS</td>
+<td align="right">5.0000</td>
+<td align="right">1</td>
+<td align="left">A2</td>
+<td align="right">0.0942</td>
+<td align="right">0.0852</td>
+<td align="right">932</td>
+<td align="right">4993</td>
+<td align="right">19221</td>
+<td align="right">54510</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="left">A</td>
+<td align="right">2</td>
+</tr>
+<tr class="odd">
+<td align="left">fluorescein</td>
+<td align="left">GFP</td>
+<td align="left">PBS</td>
+<td align="right">2.5000</td>
+<td align="right">1</td>
+<td align="left">A3</td>
+<td align="right">0.1015</td>
+<td align="right">0.0928</td>
+<td align="right">453</td>
+<td align="right">2434</td>
+<td align="right">9448</td>
+<td align="right">27864</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="left">A</td>
+<td align="right">3</td>
+</tr>
+<tr class="even">
+<td align="left">fluorescein</td>
+<td align="left">GFP</td>
+<td align="left">PBS</td>
+<td align="right">1.2500</td>
+<td align="right">1</td>
+<td align="left">A4</td>
+<td align="right">0.0985</td>
+<td align="right">0.0899</td>
+<td align="right">232</td>
+<td align="right">1253</td>
+<td align="right">4853</td>
+<td align="right">14513</td>
+<td align="right">36349</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="left">A</td>
+<td align="right">4</td>
+</tr>
+<tr class="odd">
+<td align="left">fluorescein</td>
+<td align="left">GFP</td>
+<td align="left">PBS</td>
+<td align="right">0.6250</td>
+<td align="right">1</td>
+<td align="left">A5</td>
+<td align="right">0.0957</td>
+<td align="right">0.0905</td>
+<td align="right">114</td>
+<td align="right">617</td>
+<td align="right">2404</td>
+<td align="right">7128</td>
+<td align="right">18282</td>
+<td align="right">41812</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="left">A</td>
+<td align="right">5</td>
+</tr>
+<tr class="even">
+<td align="left">fluorescein</td>
+<td align="left">GFP</td>
+<td align="left">PBS</td>
+<td align="right">0.3125</td>
+<td align="right">1</td>
+<td align="left">A6</td>
+<td align="right">0.1027</td>
+<td align="right">0.0965</td>
+<td align="right">54</td>
+<td align="right">294</td>
+<td align="right">1137</td>
+<td align="right">3388</td>
+<td align="right">8672</td>
+<td align="right">20095</td>
+<td align="right">42244</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="left">A</td>
+<td align="right">6</td>
+</tr>
+</tbody>
+</table>
+</div>
 <p>The parser has extracted the information we need from the calibration data and merged it with the plate layout information so that we now have columns containing each of the measurements for each well.</p>
 <p>Now we can actually calculate our calibration coefficients. To do this we just need to use one function and give it our parsed data.</p>
 <pre class="r"><code>flopr::generate_cfs(calibration_csv = &quot;examples/plate_reader/DATA/191219_calibration_membrane_parsed.csv&quot;)</code></pre>
 <p>For details about how this process works, you can read our paper <a href>here</a>. At the end, there should be two .pdf images showing the calibration curves for absorbance and fluorescence, along with a new .csv file, appended with &quot;_cfs&quot;, containing the parameters for use in the future, the first few rows of which look like this:</p>
-<pre><code>##           cf          beta   calibrant fluorophore measure
-## 1   184.7274  0.0057475962 fluorescein         GFP  GFP 40
-## 2   996.4472 -0.0035423519 fluorescein         GFP  GFP 50
-## 3  3821.0497 -0.0004737143 fluorescein         GFP  GFP 60
-## 4 11298.9531  0.0002015276 fluorescein         GFP  GFP 70
-## 5 29128.3783 -0.0007481215 fluorescein         GFP  GFP 80
-## 6 65834.9342  0.0012750817 fluorescein         GFP  GFP 90</code></pre>
+<div class="kable-table">
+<table>
+<thead>
+<tr class="header">
+<th align="right">cf</th>
+<th align="right">beta</th>
+<th align="left">calibrant</th>
+<th align="left">fluorophore</th>
+<th align="left">measure</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">184.7274</td>
+<td align="right">0.0057476</td>
+<td align="left">fluorescein</td>
+<td align="left">GFP</td>
+<td align="left">GFP 40</td>
+</tr>
+<tr class="even">
+<td align="right">996.4472</td>
+<td align="right">-0.0035424</td>
+<td align="left">fluorescein</td>
+<td align="left">GFP</td>
+<td align="left">GFP 50</td>
+</tr>
+<tr class="odd">
+<td align="right">3821.0497</td>
+<td align="right">-0.0004737</td>
+<td align="left">fluorescein</td>
+<td align="left">GFP</td>
+<td align="left">GFP 60</td>
+</tr>
+<tr class="even">
+<td align="right">11298.9531</td>
+<td align="right">0.0002015</td>
+<td align="left">fluorescein</td>
+<td align="left">GFP</td>
+<td align="left">GFP 70</td>
+</tr>
+<tr class="odd">
+<td align="right">29128.3783</td>
+<td align="right">-0.0007481</td>
+<td align="left">fluorescein</td>
+<td align="left">GFP</td>
+<td align="left">GFP 80</td>
+</tr>
+<tr class="even">
+<td align="right">65834.9342</td>
+<td align="right">0.0012751</td>
+<td align="left">fluorescein</td>
+<td align="left">GFP</td>
+<td align="left">GFP 90</td>
+</tr>
+</tbody>
+</table>
+</div>
 <p>The “cf” column contains the calibration coefficients that will be used to calibrate our data in later experiments.</p>
 <p>Before we get too excited we need to check the images to make sure that the calibration curves look sensible. The software attempts to remove data points which it deems are invalid, but this process isn’t perfect and occasionally may need you to remove data points from the &quot;*_parsed.csv&quot; file. Using the example data, you can see (in the image below) that some of the fluorescein wells are considered valid absorbance measurements. In this case, it isn’t the end of the world since we would never use the parameters produced from those two curves.</p>
 <embed src="data:application/pdf;base64,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" style="display: block; margin: auto;" type="application/pdf"></embed>
@@ -453,20 +708,134 @@ BiocManager::install(c(&quot;flowCore&quot;, &quot;flowClust&quot;, &quot;flowSt
 <div id="processing-plate-reader-data" class="section level2">
 <h2>Processing Plate Reader Data</h2>
 <p>As mentioned above, because plate readers from different manufacturers save the data in different formats, the first step we need to do is parse our raw data. The parser that we provide takes Tecan plate reader data in the form of a .csv file. We also need a .csv file telling us what is in each well of you microtitre plate. This can include any information that you wish; we include as much meta-data as possible as it makes our data analysis later much smoother. The only requirement is that <strong>the last column must be named “well”</strong> and include an identifier (usually the well id i.e. B2) that can be matched to the same identifier in the plate reader data. Here’s an example where we include information about the strains, plasmids, media, inducers, etc.:</p>
-<pre><code>##   strain host plasmid plasmid_2 strain_2 media sugar amino_acids inducer
-## 1                                                                       
-## 2                                                                       
-## 3                                                                       
-## 4                                                                       
-## 5                                                                       
-## 6                                                                       
-##   concentration init_ratio init_dilution well
-## 1            NA         NA            NA   A1
-## 2            NA         NA            NA   A2
-## 3            NA         NA            NA   A3
-## 4            NA         NA            NA   A4
-## 5            NA         NA            NA   A5
-## 6            NA         NA            NA   A6</code></pre>
+<div class="kable-table">
+<table style="width:100%;">
+<colgroup>
+<col width="6%"></col>
+<col width="4%"></col>
+<col width="6%"></col>
+<col width="8%"></col>
+<col width="7%"></col>
+<col width="5%"></col>
+<col width="5%"></col>
+<col width="10%"></col>
+<col width="6%"></col>
+<col width="12%"></col>
+<col width="9%"></col>
+<col width="12%"></col>
+<col width="4%"></col>
+</colgroup>
+<thead>
+<tr class="header">
+<th align="left">strain</th>
+<th align="left">host</th>
+<th align="left">plasmid</th>
+<th align="left">plasmid_2</th>
+<th align="left">strain_2</th>
+<th align="left">media</th>
+<th align="left">sugar</th>
+<th align="left">amino_acids</th>
+<th align="left">inducer</th>
+<th align="right">concentration</th>
+<th align="right">init_ratio</th>
+<th align="right">init_dilution</th>
+<th align="left">well</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="left">A1</td>
+</tr>
+<tr class="even">
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="left">A2</td>
+</tr>
+<tr class="odd">
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="left">A3</td>
+</tr>
+<tr class="even">
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="left">A4</td>
+</tr>
+<tr class="odd">
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="left">A5</td>
+</tr>
+<tr class="even">
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="left">A6</td>
+</tr>
+</tbody>
+</table>
+</div>
 <p>Now we can use our parsing function.</p>
 <pre class="r"><code>flopr::spark_parse(data_csv = &quot;examples/plate_reader/DATA/200228_example_data.csv&quot;,
                    layout_csv = &quot;examples/plate_reader/DATA/200228_example_layout.csv&quot;,
