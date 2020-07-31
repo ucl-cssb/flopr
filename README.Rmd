@@ -3,12 +3,10 @@ title: "Using FlopR"
 author: "Alex J H Fedorec"
 date: "30/07/2020"
 output: 
-  html_document: 
-    fig_height: 7
-    keep_md: yes
+  github_document:
+    html_preview: false
+    toc: true
     df_print: kable
-editor_options: 
-  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
