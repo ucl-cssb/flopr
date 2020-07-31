@@ -174,6 +174,7 @@ process_fcs_dir <-
       )
     print(paste("Trimming ", length(all_files), " .fcs files.", sep = ""))
 
+    summarised_data <- c()
     for (next_fcs in all_files) {
       flow_frame <- flowCore::read.FCS(next_fcs, emptyValue = F)
 
@@ -229,6 +230,8 @@ process_fcs_dir <-
 
       out_flow_frame <- calibrated_flow_frame
 
+      summarised_data <- rbind(summarised_data, summarise_data(out_flow_frame, flu_channels))
+
       ## Save processed flowFrames to a new folder
       out_name <-
         paste(dirname(next_fcs),
@@ -252,7 +255,67 @@ process_fcs_dir <-
         )
       }
     }
+    write.csv(summarised_data, file = paste(dirname(next_fcs),
+                                            "_processed/data_summary.csv",
+                                            sep = ""))
   }
+
+
+#' Get geometric mean and standard deviation of fluorescence channels of a flow frame
+#'
+#' @param flow_frame a flow frame to be summarised
+#' @param flu_channels channels to summarise
+#'
+#' @return
+summarise_data <- function(flow_frame, flu_channels){
+  out_data <- c()
+
+  for(flu in flu_channels){
+    flu_data <- flow_frame[,flu]@exprs[flow_frame[,flu]@exprs > 0]
+    geo_mean <- exp(mean(log(flu_data), na.rm = T))
+    geo_sd <- exp(stats::sd(log(flu_data), na.rm = T))
+    new_data <- data.frame(file = flowCore::description(flow_frame)$GUID,
+                           channel = flu,
+                           mean = geo_mean,
+                           sd = geo_sd)
+    out_data <- rbind(out_data, new_data)
+
+    if(paste("normalised_", flu, sep = "") %in% flowCore::colnames(flow_frame)){
+      flu_data <- flow_frame[,paste("normalised_", flu, sep = "")]@exprs[flow_frame[,paste("normalised_", flu, sep = "")]@exprs > 0]
+      geo_mean <- exp(mean(log(flu_data), na.rm = T))
+      geo_sd <- exp(stats::sd(log(flu_data), na.rm = T))
+      new_data <- data.frame(file = flowCore::description(flow_frame)$GUID,
+                             channel = paste("normalised_", flu, sep = ""),
+                             mean = geo_mean,
+                             sd = geo_sd)
+      out_data <- rbind(out_data, new_data)
+    }
+
+    if(paste("calibrated_", flu, sep = "") %in% flowCore::colnames(flow_frame)){
+      flu_data <- flow_frame[,paste("calibrated_", flu, sep = "")]@exprs[flow_frame[,paste("calibrated_", flu, sep = "")]@exprs > 0]
+      geo_mean <- exp(mean(log(flu_data), na.rm = T))
+      geo_sd <- exp(stats::sd(log(flu_data), na.rm = T))
+      new_data <- data.frame(file = flowCore::description(flow_frame)$GUID,
+                             channel = paste("calibrated_", flu, sep = ""),
+                             mean = geo_mean,
+                             sd = geo_sd)
+      out_data <- rbind(out_data, new_data)
+    }
+
+    if(paste("calibrated_normalised_", flu, sep = "") %in% flowCore::colnames(flow_frame)){
+      flu_data <- flow_frame[,paste("calibrated_normalised_", flu, sep = "")]@exprs[flow_frame[,paste("calibrated_normalised_", flu, sep = "")]@exprs > 0]
+      geo_mean <- exp(mean(log(flu_data), na.rm = T))
+      geo_sd <- exp(stats::sd(log(flu_data), na.rm = T))
+      new_data <- data.frame(file = flowCore::description(flow_frame)$GUID,
+                             channel = paste("calibrated_normalised_", flu, sep = ""),
+                             mean = geo_mean,
+                             sd = geo_sd)
+      out_data <- rbind(out_data, new_data)
+    }
+  }
+  return(out_data)
+}
+
 
 
 #' Get fluorescence calibration curve parameters
