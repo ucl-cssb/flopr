@@ -4,7 +4,7 @@
 \alias{flu_norm}
 \title{Normalise fluorescence against negative well}
 \usage{
-flu_norm(pr_data, neg_well, blank_well, flu_name, af_model)
+flu_norm(pr_data, neg_well, blank_well, flu_name, af_model, data_csv)
 }
 \arguments{
 \item{pr_data}{a long data.frame containing you plate reader data with OD
@@ -18,6 +18,8 @@ normalised}
 
 \item{af_model}{model used to fit negative control autofluorescence.
 For now these include "polynomial", "invers_poly", "exponential", "spline" or "loess".}
+
+\item{data_csv}{path to the original data. Used for saving normalisation curve plots.}
 }
 \value{
 

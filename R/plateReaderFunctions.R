@@ -39,13 +39,14 @@ process_plate <- function(data_csv, blank_well = "A1", neg_well = "A2",
     ggplot2::scale_colour_discrete("") +
     ggplot2::facet_grid(row~column) +
     ggplot2::theme_bw(base_size = 8)
-  ggplot2::ggsave(filename = "plot-plate-OD.pdf", plot = plt_od, height = 160,
+  ggplot2::ggsave(filename = gsub(".csv", "_OD.pdf", data_csv),
+                  plot = plt_od, height = 160,
                   width = 240, units = "mm")
 
   flu_norm_pr_data <- od_norm_pr_data
   for (flu_idx in seq_len(length(flu_names))) {
     flu_norm_pr_data <- flu_norm(flu_norm_pr_data, neg_well, blank_well,
-                                 flu_names[flu_idx], af_model)
+                                 flu_names[flu_idx], af_model, data_csv)
 
     plt_flu <- ggplot2::ggplot(flu_norm_pr_data) +
       ggplot2::geom_line(ggplot2::aes(x = .data$time, y = .data[[flu_names[flu_idx]]],
@@ -60,8 +61,10 @@ process_plate <- function(data_csv, blank_well = "A1", neg_well = "A2",
       ggplot2::scale_colour_discrete("") +
       ggplot2::facet_grid(row~column) +
       ggplot2::theme_bw(base_size = 8)
-    ggplot2::ggsave(filename = paste("plot-plate-", flu_names[flu_idx], ".pdf",
-                                     sep = ""), plot = plt_flu, height = 160,
+    ggplot2::ggsave(filename = gsub(".csv",
+                                    paste("_", flu_names[flu_idx], ".pdf", sep = ""),
+                                    data_csv),
+                    plot = plt_flu, height = 160,
                     width = 240, units = "mm")
   }
 
@@ -121,12 +124,13 @@ od_norm <- function(pr_data, blank_well, od_name) {
 #' @param flu_name the column name of the fluorescence chanel to normalise
 #' @param af_model model used to fit negative control autofluorescence.
 #' For now these include "polynomial", "invers_poly", "exponential", "spline" or "loess".
+#' @param data_csv path to the original data. Used for saving normalisation curve plots.
 #'
 #' @return
 #'
 #' @importFrom dplyr %>%
 #' @importFrom rlang .data
-flu_norm <- function(pr_data, neg_well, blank_well, flu_name, af_model) {
+flu_norm <- function(pr_data, neg_well, blank_well, flu_name, af_model, data_csv) {
   pr_data$v1 <- pr_data[, flu_name]
 
   # fit autofluorescence model to negative control --------------------------
@@ -255,7 +259,9 @@ flu_norm <- function(pr_data, neg_well, blank_well, flu_name, af_model) {
       ggplot2::scale_y_continuous(flu_name) +
       ggplot2::theme_bw()
   }
-  ggplot2::ggsave(filename = paste("plot-norm-curve-", flu_name, ".pdf", sep = ""),
+  ggplot2::ggsave(filename = gsub(".csv",
+                                  paste("_norm-curve_", flu_name, ".pdf", sep = ""),
+                                  data_csv),
                   plot = plt)
 
   # normalise fluorescence data ---------------------------------------------

@@ -35,17 +35,10 @@ process_fcs <-
     ## Try to remove doublets
     singlet_flow_frame <- get_singlets(bacteria_flow_frame)
 
-    ## Save processed flowFrames to a new folder
-    out_name <-
-      paste(substr(
-        x = fcs_file,
-        start = 1,
-        stop = nchar(fcs_file) - 4
-      ),
-      "_processed.fcs",
-      sep = "")
-
-    flowCore::write.FCS(singlet_flow_frame, out_name)
+    flowCore::write.FCS(x = singlet_flow_frame,
+                        filename = gsub(pattern = ".fcs",
+                                        replacement = "_processed.fcs",
+                                        x = fcs_file))
 
     ##  Plot a grid of graphs showing the stages of trimming
     if (do_plot) {
@@ -56,7 +49,7 @@ process_fcs <-
         NA,
         NA,
         flu_channels,
-        out_name,
+        fcs_file,
         F,
         F
       )
