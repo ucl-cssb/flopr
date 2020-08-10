@@ -361,7 +361,7 @@ We need to give the function four bits of information
 In the end we have a new .fcs file with "\_processed" appended to the
 filename, and if you asked the function to save a plot we will have a
 .pdf that looks something like
-[this](examples/flow_cytometry/DATA/20191121/pWeak_None_0_1_processed_processed.pdf).
+[this](examples/flow_cytometry/DATA/20191121/pWeak_None_0_1_processed.pdf).
 
 ### Process a folder of .fcs files
 
