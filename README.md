@@ -5,6 +5,7 @@ Alex J H Fedorec
 
   - [Prerequisite Knowledge](#prerequisite-knowledge)
   - [Installation](#installation)
+  - [A Quick Note on .csv Files](#a-quick-note-on-.csv-files)
   - [Plate Reader Calibration](#plate-reader-calibration)
   - [Processing Plate Reader Data](#processing-plate-reader-data)
       - [Autofluorescence normalisation
@@ -61,6 +62,28 @@ The examples in this document can be run using the data in the “example”
 folder. Download the whole folder and make sure that you have set your
 current working directory (you can use the `setwd()` command in R) to
 the location where you saved it on your computer
+
+## A Quick Note on .csv Files
+
+This package makes extensive use of .csv (comma separated variables)
+files for data and meta-data. Unfortunately, not all .csv are created
+equal.
+
+  - When using a Windows OS computer we recommend that you save your
+    .csv files explicitly with a UTF-8 file encoding (as shown below).
+    This means that your files can be used by someone running a
+    different operating system without error.
+  - Some parts of the world use decimal commas instead of decimal
+    points. In these places, .csv files use “;” as a separator instead
+    of “,”. Unfortunately, we are unable to automatically detect which
+    format your .csv files are in. As such, you will have to ensure that
+    your files are saved using “,” as the separator and decimal points
+    for the decimal mark. [This
+    article](https://support.collaborativedrug.com/hc/en-us/articles/115004985746-CSV-files-comma-separator-and-decimal-number-format)
+    has some help for doing so.
+
+![From Microsoft Excel, save as UTF-8 encoded .csv
+file](examples/csv_save.png)
 
 ## Plate Reader Calibration
 
@@ -195,10 +218,6 @@ about the strains, plasmids, media, inducers, etc.:
 | :----- | :--- | :------ | :--------- | :-------- | :---- | :---- | :----------- | :------ | ------------: | ----------: | -------------: | :--- |
 |        |      |         |            |           |       |       |              |         |            NA |          NA |             NA | A1   |
 |        |      |         |            |           |       |       |              |         |            NA |          NA |             NA | A2   |
-|        |      |         |            |           |       |       |              |         |            NA |          NA |             NA | A3   |
-|        |      |         |            |           |       |       |              |         |            NA |          NA |             NA | A4   |
-|        |      |         |            |           |       |       |              |         |            NA |          NA |             NA | A5   |
-|        |      |         |            |           |       |       |              |         |            NA |          NA |             NA | A6   |
 
 </div>
 
@@ -255,9 +274,9 @@ Let’s walk through what each of the arguments do:
     choices below.
   - `to_MEFL` is a Boolean flag that lets you tell the function if you
     want to convert the fluorescence data into calibrated units. You can
-    only do this if yu have carried out the calibration as detailed
+    only do this if you have carried out the calibration as detailed
     above.
-  - `flu_gains` is where you specify the gain at which you fluorescence
+  - `flu_gains` is where you specify the gain at which your fluorescence
     data was recorded for each fluorescence channel. Here we only have
     calibration parameters for “GFP” so we only specify one gain value.
   - `conversion_factors_csv` is the path to the calibration parameters
@@ -266,8 +285,8 @@ Let’s walk through what each of the arguments do:
 When we run this function the absorbance is normalised, then the
 fluorescence and finally (if desired) the absorbance and fluorescence
 values are calibrated. Finally, the processed data is saved in a new
-.csv file is created with "\_processed" appended to the filename and
-with additional columns for each of the processed values.
+.csv file with "\_processed" appended to the filename and with
+additional columns for each of the processed values.
 
 We also save some .pdf images comparing the raw and normalised data, and
 images showing the fluorescence normalisation curves. Using these plots,
@@ -289,18 +308,18 @@ cells. Some of these molecules show particularly strong emission at
 similar wavelengths to GFP. We observe that the level of
 autofluorescence is not simply proportional to the number of cells or
 optical density of our culture. As cells enter stationary phase,
-autofluorescence increases, perhpas due increased production of the
+autofluorescence increases, perhaps due increased production of the
 autofluorescent molecules and changes in cell size.
 
 In order to remove this autofluorescence from our sample data we fit a
 curve to our negative control data. We provide four different models
-that the user can choose to fit there data (and if desired more models
+that the user can choose to fit their data (and if desired more models
 can be added). There are two smoothing models: “loess” and “spline”. The
 primary difference to the user between these two models is that the
 “spline” is able to extrapolate beyond the negative control data
 provided. This means that if the range of absorbance values at which you
 have measurements of your negative control is smaller than the range of
-you samples, we can still make an attempt at normalisation. However,
+your samples, we can still make an attempt at normalisation. However,
 this extrapolation is very crude (linear from the last data point) and
 can produce poor normalisation in the extrapolated range. Fortunately,
 negative controls tend to grow better than fluorescent samples, so
@@ -366,9 +385,7 @@ filename, and if you asked the function to save a plot we will have a
 ### Process a folder of .fcs files
 
 It’s much more likely that we have more than one sample that we want to
-process. This is where the other function comes in handy. There are a
-few more arguments that we need to give it and some of them might look a
-bit complicated, but let’s have a look.
+process. This is where the other function comes in handy.
 
 ``` r
 flopr::process_fcs_dir(dir_path = "examples/flow_cytometry/DATA/20191121",
@@ -397,7 +414,8 @@ bit complicated so let’s go through them.
     appears somewhere in the filenames and they all end with “.fcs”. So
     we use the \* character to show that there are some unknown
     characters before “Med” and between “Med” and “.fcs”. If you want to
-    process all .fcs files in you folder, the pattern would be "\*.fcs".
+    process all .fcs files in your folder, the pattern would be
+    "\*.fcs".
   - `flu_channels` is as above.
   - `pre_cleaned` is as above.
   - `do_plot` is as above.
@@ -437,10 +455,11 @@ each of the fluorescence channels in `mef_peaks`. We use a model
 developed for FlowCal for our calibration curve. We then calibrate both
 the raw and normalised data since normalisation can produce fluorescence
 values less than or equal to 0, which get removed during calibration due
-to working with logged data. The new data, any plots produced, and a
-data\_summary.csv file (containing geometric statistics for each .fcs
-file) will be saved to a new folder with the same name as the original
-but with "\_processed" appended.
+to working with logged data (the output will contain a both sets of
+calibration). The new data, any plots produced, and a data\_summary.csv
+file (containing geometric statistics for each .fcs file) will be saved
+to a new folder with the same name as the original but with
+"\_processed" appended.
 
 There are a few checks that should be made to reassure yourself that
 everything has worked.
@@ -461,4 +480,12 @@ everything has worked.
     lose peaks. In the former case we need to increase `beads_dens_bw`
     and in the latter we decrease it. If tweaking this value doesn’t
     work, we also provide a way to manually specify identify the peaks
-    using the `manual_peaks` argument.
+    using the `manual_peaks` argument. For this data, a manually
+    specified set of peaks would look like this:
+
+<!-- end list -->
+
+``` r
+manual_peaks = list(list(channel = "BL1-H", 
+                      peaks = c(1.9, 2.5, 2.9, 3.3, 3.7, 4.2, 4.6, 4.95)))
+```

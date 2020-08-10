@@ -23,7 +23,7 @@
 #' @examples
 process_plate <- function(data_csv, blank_well = "A1", neg_well = "A2",
                           od_name = "OD", flu_names = c("GFP"),
-                          af_model = "polynomial", to_MEFL = F,
+                          af_model = "spline", to_MEFL = F,
                           flu_gains, conversion_factors_csv) {
 
   pr_data <- utils::read.csv(data_csv, check.names = F)

@@ -1,4 +1,4 @@
-strain,host,plasmid,plasmid_2,strain_2,media,sugar,amino_acids,inducer,concentration,init_ratio,init_dilution,well
+﻿strain,host,plasmid,plasmid_2,strain_2,media,sugar,amino_acids,inducer,concentration,init_ratio,init_dilution,well
 ,,,,,,,,,,,,A1
 ,,,,,,,,,,,,A2
 ,,,,,,,,,,,,A3

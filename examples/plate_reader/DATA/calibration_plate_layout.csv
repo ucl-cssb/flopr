@@ -1,4 +1,4 @@
-calibrant,fluorophore,media,concentration,replicate,well
+﻿calibrant,fluorophore,media,concentration,replicate,well
 fluorescein,GFP,PBS,10,1,A1
 fluorescein,GFP,PBS,5,1,A2
 fluorescein,GFP,PBS,2.5,1,A3

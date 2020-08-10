@@ -18,7 +18,6 @@ knitr::opts_chunk$set(echo = TRUE)
 
 We have attempted to make our software usable with minimal prior knowledge of the R programming language or programming in general. You will need to be familiar with the idea of running commands from a console or writing basic scripts. For R beginners, [this](https://moderndive.netlify.app/1-getting-started.html) is a great starting point, there are some good resources [here](https://education.rstudio.com/learn/beginner/) and we suggest using the [RStudio application](https://rstudio.com/products/rstudio/). It provides an environment for writing and running R code.
 
-
 ## Installation
 
 FlopR relies on several other R packages. Most of them are available through the "Comprehensive R Archive Network (CRAN)" which just means that they can be automatically installed. There are, however, a couple that need to be manually installed. To do this use the following commands:
@@ -45,6 +44,14 @@ library(flopr)
 ```
 
 The examples in this document can be run using the data in the "example" folder. Download the whole folder and make sure that you have set your current working directory (you can use the `setwd()` command in R) to the location where you saved it on your computer
+
+## A Quick Note on .csv Files
+This package makes extensive use of .csv (comma separated variables) files for data and meta-data. Unfortunately, not all .csv are created equal. 
+
+- When using a Windows OS computer we recommend that you save your .csv files explicitly with a UTF-8 file encoding (as shown below). This means that your files can be used by someone running a different operating system without error.
+- Some parts of the world use decimal commas instead of decimal points. In these places, .csv files use ";" as a separator instead of ",". Unfortunately, we are unable to automatically detect which format your .csv files are in. As such, you will have to ensure that your files are saved using "," as the separator and decimal points for the decimal mark. [This article](https://support.collaborativedrug.com/hc/en-us/articles/115004985746-CSV-files-comma-separator-and-decimal-number-format) has some help for doing so.
+
+![From Microsoft Excel, save as UTF-8 encoded .csv file](examples/csv_save.png)
 
 ## Plate Reader Calibration
 
@@ -100,7 +107,7 @@ n.b. Currently the software is setup to work with "microspheres" for calibrating
 As mentioned above, because plate readers from different manufacturers save the data in different formats, the first step we need to do is parse our raw data. The parser that we provide takes Tecan plate reader data in the form of a .csv file. We also need a .csv file telling us what is in each well of you microtitre plate. This can include any information that you wish; we include as much meta-data as possible as it makes our data analysis later much smoother. The only requirement is that **the last column must be named "well"** and include an identifier (usually the well id i.e. B2) that can be matched to the same identifier in the plate reader data. Here's an example where we include information about the strains, plasmids, media, inducers, etc.:
 
 ```{r echo=FALSE}
-head(read.csv("examples/plate_reader/DATA/200228_example_layout.csv", check.names = FALSE))
+head(read.csv("examples/plate_reader/DATA/200228_example_layout.csv", check.names = FALSE), n = 2)
 ```
 
 Now we can use our parsing function.
@@ -135,11 +142,11 @@ Let's walk through what each of the arguments do:
 - `od_name` is the name of the column containing our absorbance values in the parsed data .csv file. Currently we can only use one absorbance column, so if you record absorbance at multiple wavelengths (like I do), you will have to pick one.
 - `flu_names` are the names of the columns containing our fluorescence values. You can include as many or as few of you fluorescence columns as you like. Whichever columns are named in here, we will attempt to normalise.
 - `af_model` allows you to choose the type of model that we are going to use for fluorescence normalisation. We'll discuss the available choices below.
-- `to_MEFL` is a Boolean flag that lets you tell the function if you want to convert the fluorescence data into calibrated units. You can only do this if yu have carried out the calibration as detailed above.
-- `flu_gains` is where you specify the gain at which you fluorescence data was recorded for each fluorescence channel. Here we only have calibration parameters for "GFP" so we only specify one gain value.
+- `to_MEFL` is a Boolean flag that lets you tell the function if you want to convert the fluorescence data into calibrated units. You can only do this if you have carried out the calibration as detailed above.
+- `flu_gains` is where you specify the gain at which your fluorescence data was recorded for each fluorescence channel. Here we only have calibration parameters for "GFP" so we only specify one gain value.
 - `conversion_factors_csv` is the path to the calibration parameters that you generated using the protocol detailed above.
 
-When we run this function the absorbance is normalised, then the fluorescence and finally (if desired) the absorbance and fluorescence values are calibrated. Finally, the processed data is saved in a new .csv file is created with "_processed" appended to the filename and with additional columns for each of the processed values.
+When we run this function the absorbance is normalised, then the fluorescence and finally (if desired) the absorbance and fluorescence values are calibrated. Finally, the processed data is saved in a new .csv file with "_processed" appended to the filename and with additional columns for each of the processed values.
 
 We also save some .pdf images comparing the raw and normalised data, and images showing the fluorescence normalisation curves. Using these plots, there are a few checks that we should make before celebrating.
 
@@ -148,9 +155,9 @@ We also save some .pdf images comparing the raw and normalised data, and images 
 
 ### Autofluorescence normalisation details
 
-Autofluorescence is the fluorescence produced by anything other than the fluorophores that we are interested in measuring. A small amount usually comes from growth media and can be minimised by choosing certain medias. A large contribution comes from molecules produced and secreted by our cells. Some of these molecules show particularly strong emission at similar wavelengths to GFP. We observe that the level of autofluorescence is not simply proportional to the number of cells or optical density of our culture. As cells enter stationary phase, autofluorescence increases, perhpas due increased production of the autofluorescent molecules and changes in cell size.
+Autofluorescence is the fluorescence produced by anything other than the fluorophores that we are interested in measuring. A small amount usually comes from growth media and can be minimised by choosing certain medias. A large contribution comes from molecules produced and secreted by our cells. Some of these molecules show particularly strong emission at similar wavelengths to GFP. We observe that the level of autofluorescence is not simply proportional to the number of cells or optical density of our culture. As cells enter stationary phase, autofluorescence increases, perhaps due increased production of the autofluorescent molecules and changes in cell size.
 
-In order to remove this autofluorescence from our sample data we fit a curve to our negative control data. We provide four different models that the user can choose to fit there data (and if desired more models can be added). There are two smoothing models: "loess" and "spline". The primary difference to the user between these two models is that the "spline" is able to extrapolate beyond the negative control data provided. This means that if the range of absorbance values at which you have measurements of your negative control is smaller than the range of you samples, we can still make an attempt at normalisation. However, this extrapolation is very crude (linear from the last data point) and can produce poor normalisation in the extrapolated range. Fortunately, negative controls tend to grow better than fluorescent samples, so extrapolation is often not an issue. We also provide a second-order polynomial and an exponential model, specified by "polynomial" and "exponential" repsectively. These are inherently able to make predictions beyond the range of normalised data and therefore may be good starting points.
+In order to remove this autofluorescence from our sample data we fit a curve to our negative control data. We provide four different models that the user can choose to fit their data (and if desired more models can be added). There are two smoothing models: "loess" and "spline". The primary difference to the user between these two models is that the "spline" is able to extrapolate beyond the negative control data provided. This means that if the range of absorbance values at which you have measurements of your negative control is smaller than the range of your samples, we can still make an attempt at normalisation. However, this extrapolation is very crude (linear from the last data point) and can produce poor normalisation in the extrapolated range. Fortunately, negative controls tend to grow better than fluorescent samples, so extrapolation is often not an issue. We also provide a second-order polynomial and an exponential model, specified by "polynomial" and "exponential" repsectively. These are inherently able to make predictions beyond the range of normalised data and therefore may be good starting points.
 
 Prolonged periods in stationary phase can cause autofluorescence to increase while absorbance remains stable and in some cases absorbance can start decreasing while autofluorescence does not. In these circumstances, none of the models perform particularly well. The performance of each of them should be checked and if none of them perform satisfactorily it may be necessary to trim the data to remove confounding timepoints.
 
@@ -181,7 +188,7 @@ We need to give the function four bits of information
 In the end we have a new .fcs file with "_processed" appended to the filename, and if you asked the function to save a plot we will have a .pdf that looks something like [this](examples/flow_cytometry/DATA/20191121/pWeak_None_0_1_processed.pdf).
 
 ### Process a folder of .fcs files
-It's much more likely that we have more than one sample that we want to process. This is where the other function comes in handy. There are a few more arguments that we need to give it and some of them might look a bit complicated, but let's have a look.
+It's much more likely that we have more than one sample that we want to process. This is where the other function comes in handy.
 
 ```{r eval=FALSE}
 flopr::process_fcs_dir(dir_path = "examples/flow_cytometry/DATA/20191121",
@@ -198,7 +205,7 @@ flopr::process_fcs_dir(dir_path = "examples/flow_cytometry/DATA/20191121",
 There are a few more arguments to this function and some of them look a bit complicated so let's go through them.
 
 - `dir_path` is the path to the folder with your .fcs files in.
-- `pattern` allows us to just process a subset of the .fcs files in the folder. Here we are just going to process files with "Med" in the filename. Without going into too much detail, this uses a simplified version of "regular expressions" called ["globbing patterns"](https://en.wikipedia.org/wiki/Glob_%28programming%29). We can use "wildcard" symbols to represent any character (? is a place holder for an single character and * is a place holder for 0 to any number of characters). In this example all we know is that "Med" appears somewhere in the filenames and they all end with ".fcs". So we use the * character to show that there are some unknown characters before "Med" and between "Med" and ".fcs". If you want to process all .fcs files in you folder, the pattern would be "*.fcs".
+- `pattern` allows us to just process a subset of the .fcs files in the folder. Here we are just going to process files with "Med" in the filename. Without going into too much detail, this uses a simplified version of "regular expressions" called ["globbing patterns"](https://en.wikipedia.org/wiki/Glob_%28programming%29). We can use "wildcard" symbols to represent any character (? is a place holder for an single character and * is a place holder for 0 to any number of characters). In this example all we know is that "Med" appears somewhere in the filenames and they all end with ".fcs". So we use the * character to show that there are some unknown characters before "Med" and between "Med" and ".fcs". If you want to process all .fcs files in your folder, the pattern would be "*.fcs".
 - `flu_channels` is as above.
 - `pre_cleaned` is as above.
 - `do_plot` is as above.
@@ -212,12 +219,17 @@ mef_peaks = list(list(channel = "BL1-H",
                       peaks = c(0, 218, 581, 1963, 6236, 15267, 68766, 181945)))
 ```
 
-The function carries out the trimming as described above. Then, if a negative control file is given, it performs fluorescence normalisation by negating the geometric mean of the negative control's fluorescence in each channel from each of the other samples. Finally, if the files are going to be calibrated, a calibration curve is fit to the bead peaks in each of the fluorescence channels in `mef_peaks`. We use a model developed for FlowCal for our calibration curve. We then calibrate both the raw and normalised data since normalisation can produce fluorescence values less than or equal to 0, which get removed during calibration due to working with logged data. The new data, any plots produced, and a data_summary.csv file (containing geometric statistics for each .fcs file) will be saved to a new folder with the same name as the original but with "_processed" appended. 
+The function carries out the trimming as described above. Then, if a negative control file is given, it performs fluorescence normalisation by negating the geometric mean of the negative control's fluorescence in each channel from each of the other samples. Finally, if the files are going to be calibrated, a calibration curve is fit to the bead peaks in each of the fluorescence channels in `mef_peaks`. We use a model developed for FlowCal for our calibration curve. We then calibrate both the raw and normalised data since normalisation can produce fluorescence values less than or equal to 0, which get removed during calibration due to working with logged data (the output will contain a both sets of calibration). The new data, any plots produced, and a data_summary.csv file (containing geometric statistics for each .fcs file) will be saved to a new folder with the same name as the original but with "_processed" appended. 
 
 There are a few checks that should be made to reassure yourself that everything has worked. 
 
 - To confirm correct trimming, we recommend setting `do_plot = TRUE` so that you can see which events have been removed during processing. Check that the debris, if there is any, and doublets have been correctly identified and removed.
-- For each fluorescence calibration channel, a plot will be saved showing the bead peaks that have been identified and the calibration curve that we have fit to them. Sometime the bead peaks aren't identified correctly. In this case, there is another argument that the function can take `beads_dens_bw`, which has a default value of `0.025`. To identify the beads we use something called a Gaussian kernel to smooth the fluorescence data and pick the highest points. Sometimes this smoothing isn't quite right; we might not smooth enough and one peak is identified as two, or we smooth too much and lose peaks. In the former case we need to increase `beads_dens_bw` and in the latter we decrease it. If tweaking this value doesn't work, we also provide a way to manually specify identify the peaks using the `manual_peaks` argument.
+- For each fluorescence calibration channel, a plot will be saved showing the bead peaks that have been identified and the calibration curve that we have fit to them. Sometime the bead peaks aren't identified correctly. In this case, there is another argument that the function can take `beads_dens_bw`, which has a default value of `0.025`. To identify the beads we use something called a Gaussian kernel to smooth the fluorescence data and pick the highest points. Sometimes this smoothing isn't quite right; we might not smooth enough and one peak is identified as two, or we smooth too much and lose peaks. In the former case we need to increase `beads_dens_bw` and in the latter we decrease it. If tweaking this value doesn't work, we also provide a way to manually specify identify the peaks using the `manual_peaks` argument. For this data, a manually specified set of peaks would look like this:
+
+```{r eval=FALSE}
+manual_peaks = list(list(channel = "BL1-H", 
+                      peaks = c(1.9, 2.5, 2.9, 3.3, 3.7, 4.2, 4.6, 4.95)))
+```
 
 
 
