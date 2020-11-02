@@ -334,9 +334,13 @@ calibrate_flu <- function(pr_data, flu_name, flu_gain, od_name, conversion_facto
 
 
   # Get conversion factor for fluorophore ------------------------------------
-
   flu_cfs <- conversion_factors %>%
     dplyr::filter(.data$fluorophore == flu_name)
+
+  # if there is no calibration for the fluorophore
+  if(nrow(flu_cfs) == 0) {
+    return(pr_data)
+  }
 
   tryCatch(this_cf <- flu_cfs[which(flu_cfs$measure == paste(flu_name, flu_gain)),]$cf,
            finally = this_cf <- NA)
@@ -500,11 +504,7 @@ generate_cfs <- function(calibration_csv) {
         return(error)
       }
 
-      if(calib == "microspheres"){ # n.b. initial cf value for microspheres needs to be much lower than for fluorescein to acheive a fit
-        res <- stats::optim(c(1e-8,0), error_func)
-      } else if(calib == "fluorescein"){
-        res <- stats::optim(c(1,0), error_func)
-      }
+      res <- stats::optim(c(1e-10,0), error_func)
 
       if(res$convergence == 0){
         new_fit <- data.frame(cf = res$par[1], beta = res$par[2],

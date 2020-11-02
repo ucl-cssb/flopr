@@ -10,7 +10,7 @@ process_plate(
   neg_well = "A2",
   od_name = "OD",
   flu_names = c("GFP"),
-  af_model = "polynomial",
+  af_model = "spline",
   to_MEFL = F,
   flu_gains,
   conversion_factors_csv
