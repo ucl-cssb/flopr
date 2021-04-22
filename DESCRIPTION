@@ -1,10 +1,10 @@
 Package: flopr
 Type: Package
 Title: A package for the normalisation and calibration of flow cytometry and plate reader spectrophotometry data
-Version: 0.3.1
-Authors@R: person("Fedorec", "Alex J H", , "alexander.fedorec.13@ucl.ac.uk", c("aut", "cre"))
-Author: Alex J H Fedorec [aut, cre]
-Maintainer: Alex J H Fedorec <alexander.fedorec.13@ucl.ac.uk>
+Version: 0.3.2
+Authors@R: c(
+  person("Fedorec", "Alex J H", email = "alexander.fedorec.13@ucl.ac.uk", role = c("aut", "cre")),
+  person("Robinson", "Clare", role = c("aut")))
 Description: something
 URL: https://github.com/ucl-cssb/flopr
 BugReports: https://github.com/ucl-cssb/flopr/issues
@@ -12,9 +12,6 @@ License: GPL-3
 Encoding: UTF-8
 LazyData: true
 Imports:
-  flowClust,
-  flowCore,
-  flowStats,
   ggplot2,
   gridExtra,
   grid,
@@ -27,5 +24,10 @@ Imports:
   broom,
   mgcv,
   tidyselect,
-  checkmate
+  checkmate,
+  readxl
+Suggests:
+  flowCore,
+  flowClust,
+  flowStats
 RoxygenNote: 7.1.1
