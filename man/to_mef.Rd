@@ -15,7 +15,7 @@ in the processed data and plotting. Defaults to "BL1-H".}
 \item{calibration_parameters}{parameters of a model returned by
 get_calibration(...)}
 
-\item{normalise}{Bollean flag to indicate if data has been normalised}
+\item{normalise}{Boolean flag to indicate if data has been normalised}
 }
 \value{
 

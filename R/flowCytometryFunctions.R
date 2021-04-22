@@ -19,6 +19,11 @@ process_fcs <-
            flu_channels = c("BL1-H"),
            do_plot = F,
            pre_cleaned = F) {
+    if (!requireNamespace("flowCore", quietly = TRUE)) {
+      stop("Package \"flowCore\" needed for this function to work. Please install it.",
+           call. = FALSE)
+    }
+
     flow_frame <- flowCore::read.FCS(fcs_file, emptyValue = F)
 
     ## Trim 0 values and log10 transform
@@ -102,6 +107,12 @@ process_fcs_dir <-
            mef_peaks = NA,
            bead_dens_bw = 0.025,
            manual_peaks = NA) {
+
+    if (!requireNamespace("flowCore", quietly = TRUE)) {
+      stop("Package \"flowCore\" needed for this function to work. Please install it.",
+           call. = FALSE)
+    }
+
     ## Create directory for processed flowFrames
     if (!dir.exists(paste(dir_path, "processed", sep = "_"))) {
       dir.create(paste(dir_path, "processed", sep = "_"), recursive = T)
@@ -248,7 +259,7 @@ process_fcs_dir <-
         )
       }
     }
-    write.csv(summarised_data, file = paste(dirname(next_fcs),
+    utils::write.csv(summarised_data, file = paste(dirname(next_fcs),
                                             "_processed/data_summary.csv",
                                             sep = ""))
   }
@@ -337,6 +348,11 @@ get_calibration <-
            mef_peaks,
            manual_peaks,
            bead_dens_bw) {
+    if (!requireNamespace("flowClust", quietly = TRUE)) {
+      stop("Package \"flowClust\" needed for this function to work. Please install it.",
+           call. = FALSE)
+    }
+
     bead_frame <- flowCore::read.FCS(bead_file, emptyValue = F)
 
     out_name <- paste(dirname(bead_file),
@@ -344,7 +360,7 @@ get_calibration <-
                       basename(unlist(strsplit(bead_file, split = "[.]"))[1]),
                       sep = "")
 
-    ## default peak postions if none provided
+    ## default peak positions if none provided
     if (is.na(mef_peaks)) {
       mef_peaks <- list(list(
         channel = "BL1-H",
@@ -627,6 +643,11 @@ prep_flow_frame <- function(flow_frame, flu_channels) {
 #' @return
 #'
 get_bacteria <- function(flow_frame, pre_cleaned) {
+  if (!requireNamespace("flowClust", quietly = TRUE)) {
+    stop("Package \"flowClust\" needed for this function to work. Please install it.",
+         call. = FALSE)
+  }
+
   if (pre_cleaned) {
     best_clusters <- flowClust::flowClust(
       flow_frame,
@@ -715,7 +736,11 @@ get_bacteria <- function(flow_frame, pre_cleaned) {
 #' @return
 #'
 get_singlets <- function(flow_frame) {
-  # ## method using function from openCYto package
+  if (!requireNamespace("flowStats", quietly = TRUE)) {
+    stop("Package \"flowStats\" needed for this function to work. Please install it.",
+         call. = FALSE)
+  }
+  ## method using function from openCYto package
   sg <- flowStats::singletGate(flow_frame, area = "SSC-A", height = "SSC-H",
                                prediction_level = 0.90)
   fres <- flowCore::filter(flow_frame, sg)
@@ -735,7 +760,7 @@ get_singlets <- function(flow_frame) {
 #' in the processed data and plotting. Defaults to "BL1-H".
 #' @param calibration_parameters parameters of a model returned by
 #' get_calibration(...)
-#' @param normalise Bollean flag to indicate if data has been normalised
+#' @param normalise Boolean flag to indicate if data has been normalised
 #'
 #' @return
 #'
@@ -1034,7 +1059,7 @@ plot_trimming <-
                 ))
         }
 
-        ## Grab the legend to use seperately
+        ## Grab the legend to use separately
         flu_legend <<- get_legend(flu_plt)
         flu_plt_main <- flu_plt +
           ggplot2::scale_x_continuous(filt,
