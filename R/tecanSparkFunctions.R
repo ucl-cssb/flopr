@@ -1,6 +1,6 @@
 #' Parser for Tecan Spark plate reader data
 #'
-#' @param data_csv path to csv file from Tecan Spark plate reader
+#' @param data_csv path to .csv, .xls or .xlsx file from Tecan Spark plate reader
 #' @param layout_csv path to csv file containing plate layout information
 #' @param timeseries Boolean flag indicating whether the data is a timeseries or
 #' single recording. The Tecan software outputs the two scenarios differently.
@@ -10,8 +10,19 @@
 #' @importFrom rlang .data
 #'
 spark_parse <- function(data_csv, layout_csv, timeseries=F) {
-  data <- utils::read.table(data_csv, sep = ",", blank.lines.skip = T,
-                            header = F, stringsAsFactors = F)
+
+  if(stringr::str_ends(data_csv, ".xlsx") | stringr::str_ends(data_csv, ".xls")){
+    data <- as.data.frame(readxl::read_excel(path = data_csv,
+                               col_names = F,
+                               col_types = "text"))
+  } else if(stringr::str_ends(data_csv, ".csv")){
+    data <- utils::read.table(data_csv, sep = ",",
+                              na.strings = c(""),
+                              header = F,
+                              stringsAsFactors = F)
+  } else {
+    stop("data_csv is must be a .csv, .xls or .xlsx file.")
+  }
 
   plate_layout <- utils::read.csv(layout_csv)
 
@@ -37,17 +48,18 @@ spark_parse <- function(data_csv, layout_csv, timeseries=F) {
 
       # find where the end of the current measurement block is
       block_end_idx <- next_block_start_idx
-      while (data[block_end_idx, 1] != "") {
+      while (!is.na(data[block_end_idx, 1])) {
         block_end_idx <- block_end_idx + 1
       }
 
       # grab the data only for that measurement
       new_block <- data[(next_block_start_idx + 1):(block_end_idx - 1), ]
+      # new_block <- new_block[-c(1,3), ]  # remove cycle no. and temp.
 
       # trim unecessary readings i.e. temp and cycle number
       # and rename columns
-      times <- new_block[2, ]
-      new_block <- new_block[c(-1, -2, -3), ]
+      times <- as.character(new_block[2,])
+      new_block <- new_block[-c(1:3), ]
       names(new_block) <- times
       names(new_block)[1] <- "well"
 
