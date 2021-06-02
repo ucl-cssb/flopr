@@ -1,7 +1,7 @@
 ---
 title: "Using FlopR"
 author: "Alex J H Fedorec"
-date: "30/07/2020"
+date: "02/06/2021"
 output: 
   github_document:
     html_preview: false
@@ -20,7 +20,7 @@ We have attempted to make our software usable with minimal prior knowledge of th
 
 ## Installation
 
-FlopR relies on several other R packages. Most of them are available through the "Comprehensive R Archive Network (CRAN)" which just means that they can be automatically installed. There are, however, a couple that need to be manually installed. To do this use the following commands:
+FlopR relies on several other R packages. Most of them are available through the "Comprehensive R Archive Network (CRAN)" which just means that they can be automatically installed. There are, however, a couple that need to be manually installed if you are using the flow cytometry processing functions. To do this use the following commands:
 
 ```{r eval=FALSE, message=FALSE, warning=FALSE, results='hide'}
 install.packages("devtools", repos = "https://cloud.r-project.org/")
@@ -55,21 +55,21 @@ This package makes extensive use of .csv (comma separated variables) files for d
 
 ## Plate Reader Calibration
 
-The experimental protocols for producing absorbance and fluorescence calibration data can be found [here](https://www.protocols.io/workspaces/igem-measurement). 
+The experimental protocols for producing absorbance and fluorescence calibration data can be found [here](https://www.protocols.io/workspaces/igem-measurement) and [here](https://pubs.acs.org/doi/full/10.1021/acssynbio.0c00296). 
 
-The data produced by plate readers from different manufacturers comes in different formats. The first step we need to do is to "parse" the data from the plate reader into a standard format. We have written an example parser for use with data from Tecan plate readers. If you need help writing a parser for your plate reader, please contact us and we'll see what we can do.
+The data produced by plate readers from different manufacturers comes in different formats. The first step we need to do is to "parse" the data from the plate reader into a standard format. We have written an example parsers for use with data from Tecan plate readers and the Biotek Neo 2. If you need help writing a parser for your plate reader, please contact us and we'll see what we can do.
 
-For a Tecan plate reader, the data is saved as an Excel .xls file. It first needs to be saved as a .csv file (open in Excel and "Save As" .csv) that can be read by R. We also need a .csv file telling us what is in each well of our microtitre plate. An example can be found in the "examples/plate_reader/DATA" folder, but the first few rows looks like this:
+For a Tecan plate reader, the data is saved as an Excel .xls file. It first needs to be saved as a .csv file (open in Excel and "Save As" .csv) that can be read by R. We also need a .csv file telling us what is in each well of our microtitre plate. An example can be found in the "examples/plate_reader/tecan_spark" folder, but the first few rows looks like this:
 
 ```{r echo=FALSE}
-head(read.csv("examples/plate_reader/DATA/calibration_plate_layout.csv"))
+head(read.csv("examples/plate_reader/tecan_spark/calibration_plate_layout.csv"))
 ```
 
 Once we have the calibration data and layout .csv files we can parse the data.
 
 ```{r eval=FALSE}
-flopr::spark_parse(data_csv = "examples/plate_reader/DATA/191219_calibration_membrane.csv",
-                   layout_csv = "examples/plate_reader/DATA/calibration_plate_layout.csv",
+flopr::spark_parse(data_csv = "examples/plate_reader/tecan_spark/191219_calibration_membrane.csv",
+                   layout_csv = "examples/plate_reader/tecan_spark/calibration_plate_layout.csv",
                    timeseries = FALSE)
 ```
 
@@ -78,7 +78,7 @@ The `data_csv` argument takes the path to the calibration data. `layout_csv` is 
 The `spark_parse()` function saves the parsed calibration data in a new .csv file, in the same location as the calibration data, with "_parsed" appended to the filename. The first few rows look like this:
 
 ```{r echo=FALSE}
-head(read.csv("examples/plate_reader/DATA/191219_calibration_membrane_parsed.csv", check.names = FALSE))
+head(read.csv("examples/plate_reader/tecan_spark/191219_calibration_membrane_parsed.csv", check.names = FALSE))
 ```
 
 The parser has extracted the information we need from the calibration data and merged it with the plate layout information so that we now have columns containing each of the measurements for each well.
@@ -86,35 +86,35 @@ The parser has extracted the information we need from the calibration data and m
 Now we can actually calculate our calibration coefficients. To do this we just need to use one function and give it our parsed data.
 
 ```{r eval=FALSE}
-flopr::generate_cfs(calibration_csv = "examples/plate_reader/DATA/191219_calibration_membrane_parsed.csv")
+flopr::generate_cfs(calibration_csv = "examples/plate_reader/tecan_spark/191219_calibration_membrane_parsed.csv")
 ```
 
-For details about how this process works, you can read our paper [here](). At the end, there should be two .pdf images showing the calibration curves for absorbance and fluorescence, along with a new .csv file, appended with "_cfs", containing the parameters for use in the future, the first few rows of which look like this:
+For details about how this process works, you can read our paper [here](https://pubs.acs.org/doi/full/10.1021/acssynbio.0c00296). At the end, there should be two .pdf images showing the calibration curves for absorbance and fluorescence, along with a new .csv file, appended with "_cfs", containing the parameters for use in the future, the first few rows of which look like this:
 
 ```{r echo=FALSE}
-head(read.csv("examples/plate_reader/DATA/191219_calibration_membrane_parsed_cfs.csv", check.names = FALSE))
+head(read.csv("examples/plate_reader/tecan_spark/191219_calibration_membrane_parsed_cfs.csv", check.names = FALSE))
 ```
 
 The "cf" column contains the calibration coefficients that will be used to calibrate our data in later experiments.
 
-Before we get too excited we need to check the images to make sure that the calibration curves look sensible. The software attempts to remove data points which it deems are invalid, but this process isn't perfect and occasionally may need you to remove data points from the "*_parsed.csv" file. Using the example data, you can see ([here](examples/plate_reader/DATA/191219_calibration_membrane_parsed_absorbance_cfs.pdf)) that some of the fluorescein wells are considered valid absorbance measurements. In this case, it isn't the end of the world since we would never use the parameters produced from those two curves.
+Before we get too excited we need to check the images to make sure that the calibration curves look sensible. The software attempts to remove data points which it deems are invalid, but this process isn't perfect and occasionally may need you to remove data points from the "*_parsed.csv" file. Using the example data, you can see ([here](examples/plate_reader/tecan_spark/191219_calibration_membrane_parsed_absorbance_cfs.pdf)) that some of the fluorescein wells are considered valid absorbance measurements. In this case, it isn't the end of the world since we would never use the parameters produced from those two curves.
 
 n.b. Currently the software is setup to work with "microspheres" for calibrating cell number and "fluorescein" for calibrating GFP fluorescence. We hope to extend it in the near future to work with other calibrants.
 
 
 ## Processing Plate Reader Data
 
-As mentioned above, because plate readers from different manufacturers save the data in different formats, the first step we need to do is parse our raw data. The parser that we provide takes Tecan plate reader data in the form of a .csv file. We also need a .csv file telling us what is in each well of you microtitre plate. This can include any information that you wish; we include as much meta-data as possible as it makes our data analysis later much smoother. The only requirement is that **the last column must be named "well"** and include an identifier (usually the well id i.e. B2) that can be matched to the same identifier in the plate reader data. Here's an example where we include information about the strains, plasmids, media, inducers, etc.:
+As mentioned above, because plate readers from different manufacturers save the data in different formats, the first step we need to do is parse our raw data. The parser that we provide takes Tecan plate reader data in the form of a .csv file. We also need a .csv file telling us what is in each well of you microtitre plate. This can include any information that you wish; we include as much meta-data as possible as it makes our data analysis later much smoother. (Before version 0.4.01: The only requirement is that **the last column must be named "well"** and include an identifier (usually the well id i.e. B2) that can be matched to the same identifier in the plate reader data.) Here's an example where we include information about the strains, plasmids, media, inducers, etc.:
 
 ```{r echo=FALSE}
-head(read.csv("examples/plate_reader/DATA/200228_example_layout.csv", check.names = FALSE), n = 2)
+head(read.csv("examples/plate_reader/tecan_spark/200228_example_layout.csv", check.names = FALSE), n = 2)
 ```
 
 Now we can use our parsing function.
 
 ```{r eval=FALSE}
-flopr::spark_parse(data_csv = "examples/plate_reader/DATA/200228_example_data.csv",
-                   layout_csv = "examples/plate_reader/DATA/200228_example_layout.csv",
+flopr::spark_parse(data_csv = "examples/plate_reader/tecan_spark/200228_example_data.csv",
+                   layout_csv = "examples/plate_reader/tecan_spark/200228_example_layout.csv",
                    timeseries = TRUE)
 ```
 
@@ -123,7 +123,7 @@ The data is extracted and the meta-data from the layout is attached. Note that t
 Now we can start processing our data. There is one function that does all the work for: `process_plate()`. There are a few arguments that we need to give the function which will control what happens.
 
 ```{r eval=FALSE}
-flopr::process_plate(data_csv = "examples/plate_reader/DATA/200228_example_data_parsed.csv",
+flopr::process_plate(data_csv = "examples/plate_reader/tecan_spark/200228_example_data_parsed.csv",
                      blank_well = c("C12", "D12"),
                      neg_well = c("C6", "D6", "E6"),
                      od_name = "OD700",
@@ -131,7 +131,7 @@ flopr::process_plate(data_csv = "examples/plate_reader/DATA/200228_example_data_
                      af_model = "spline",
                      to_MEFL = TRUE,
                      flu_gains = 135,
-                     conversion_factors_csv = "examples/plate_reader/DATA/191219_calibration_membrane_parsed_cfs.csv")
+                     conversion_factors_csv = "examples/plate_reader/tecan_spark/191219_calibration_membrane_parsed_cfs.csv")
 ```
 
 Let's walk through what each of the arguments do:
