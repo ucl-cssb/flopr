@@ -63,28 +63,26 @@ spark_parse <- function(data_csv, layout_csv, timeseries=F) {
     }
 
     # rearrange data ----------------------------------------------------------
-    well_idx <- which(names(all_data) == "well")
-    gathered_data <- tidyr::gather(all_data, key = "time", value = p,
-                                   -c(1:well_idx, ncol(all_data)))
-    gathered_data$time <- as.numeric(gathered_data$time)
-    gathered_data$p <- as.numeric(gathered_data$p)
-    spread_data <- tidyr::spread(gathered_data, key = .data$measure,
-                                 value = .data$p)
-
-    spread_data$row <- substr(x = spread_data$well, start = 1, stop = 1)
-    spread_data$column <- as.numeric(substr(x = spread_data$well, start = 2,
-                                            stop = nchar(spread_data$well)))
-    spread_data <- dplyr::arrange_at(spread_data, dplyr::vars(.data$time,
-                                                              .data$row,
-                                                              .data$column))
-
-
+    layout_cols <- ncol(plate_layout)
+    out_data <- all_data %>%
+      tidyr::pivot_longer(cols = (layout_cols+1):(ncol(all_data)-1),  # reshape so columns for each timepoint are collapsed into single "time" column and "value" column
+                          names_to = "time",
+                          names_transform = list(time=as.numeric),
+                          values_to = "value",
+                          values_transform = list(value=as.numeric)) %>%
+      tidyr::pivot_wider(names_from = .data$measure, values_from = .data$value) %>%  # reshape so we have a column for each measurement type
+      dplyr::mutate(row = substr(x = .data$well, start = 1, stop = 1)) %>%  # make a "row" column from the "well" column
+      dplyr::mutate(column = as.numeric(substr(x = .data$well, start = 2,  # and make a "column" column
+                                               stop = nchar(.data$well)))) %>%
+      dplyr::arrange_at(dplyr::vars(.data$time,  # order the rows
+                                    .data$row,
+                                    .data$column))
 
     # write parsed data to csv ------------------------------------------------
     out_name <- gsub(".csv", "_parsed.csv", data_csv)
-    utils::write.csv(x = spread_data, file = out_name, row.names = FALSE)
+    utils::write.csv(x = out_data, file = out_name, row.names = FALSE)
 
-    return(spread_data)
+    return(out_data)
   }
   else if (timeseries == FALSE){
     start_time_idx <- which(data[, 1] == "Start Time")  # get start and end time ids

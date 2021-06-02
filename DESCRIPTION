@@ -1,7 +1,7 @@
 Package: flopr
 Type: Package
 Title: A package for the normalisation and calibration of flow cytometry and plate reader spectrophotometry data
-Version: 0.3.2
+Version: 0.4.01
 Authors@R: c(
   person("Fedorec", "Alex J H", email = "alexander.fedorec.13@ucl.ac.uk", role = c("aut", "cre")),
   person("Robinson", "Clare", role = c("aut")))
