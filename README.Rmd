@@ -59,7 +59,7 @@ The experimental protocols for producing absorbance and fluorescence calibration
 
 The data produced by plate readers from different manufacturers comes in different formats. The first step we need to do is to "parse" the data from the plate reader into a standard format. We have written an example parsers for use with data from Tecan plate readers and the Biotek Neo 2. If you need help writing a parser for your plate reader, please contact us and we'll see what we can do.
 
-For a Tecan plate reader, the data is saved as an Excel .xls file. It first needs to be saved as a .csv file (open in Excel and "Save As" .csv) that can be read by R. We also need a .csv file telling us what is in each well of our microtitre plate. An example can be found in the "examples/plate_reader/tecan_spark" folder, but the first few rows looks like this:
+For a Tecan plate reader, the data is saved as an Excel .xls file. As of flopR version 0.4.02, the spark_parse function accepts Excel files (.xls and .xlsx). If you are using an earlier version, the data first needs to be saved as a .csv file (open in Excel and "Save As" .csv) that can be read by R. We also need a .csv file telling us what is in each well of our microtitre plate. An example can be found in the "examples/plate_reader/tecan_spark" folder, but the first few rows looks like this:
 
 ```{r echo=FALSE}
 head(read.csv("examples/plate_reader/tecan_spark/calibration_plate_layout.csv"))
