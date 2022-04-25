@@ -214,7 +214,7 @@ process_fcs_dir <-
 
           ## convert to matrix form
           normalised_matrix <- matrix(normalised_values,
-                 dimnames = list(NULL, paste("normalised_", flu, sep = "")))
+                                      dimnames = list(NULL, paste("normalised_", flu, sep = "")))
 
           ## append to flowFrame
           normalised_flow_frame <- ff_append_cols(normalised_flow_frame, normalised_matrix)
@@ -260,8 +260,8 @@ process_fcs_dir <-
       }
     }
     utils::write.csv(summarised_data, file = paste(dirname(next_fcs),
-                                            "_processed/data_summary.csv",
-                                            sep = ""))
+                                                   "_processed/data_summary.csv",
+                                                   sep = ""))
   }
 
 
@@ -531,13 +531,13 @@ get_calibration <-
       model <- NA
       while(is.na(model)){
         try(model <-
-          stats::nls(log(calibrated) ~ log(exp(b) * measured ^ m - mef_auto),
-                     data = valid_peaks,
-                     start = list(
-                       m = stats::runif(1, min = -1, max = 2),
-                       b = stats::runif(1, min = -1, max = 1),
-                       mef_auto = stats::runif(1, min = -1e3, max = 1e3)
-                     )), silent = T)
+              stats::nls(log(calibrated) ~ log(exp(b) * measured ^ m - mef_auto),
+                         data = valid_peaks,
+                         start = list(
+                           m = stats::runif(1, min = -1, max = 2),
+                           b = stats::runif(1, min = -1, max = 1),
+                           mef_auto = stats::runif(1, min = -1e3, max = 1e3)
+                         )), silent = T)
         # if(!is.na(model)){
         #   break
         # }
@@ -685,44 +685,19 @@ get_bacteria <- function(flow_frame, pre_cleaned) {
           )
         )
 
-      clst_fsc <-
-        flowClust::getEstimates(best_clusters, flow_frame)$locationsC[[bact_indx, 1]]
-      clst_ssc <-
-        flowClust::getEstimates(best_clusters, flow_frame)$locationsC[[bact_indx, 2]]
-
-      if ((clst_fsc < 4) &
-          (clst_ssc < 3)) {
-        # TODO: remove hardcoding of thresholds
-        print("only debris found")
-        bact_flow_frame <- 0
-      } else {
-        ks <- seq(1:2)
-        debris_clusts <- setdiff(ks, bact_indx)
-        split_flow_frame <-
-          flowClust::split(
-            flow_frame,
-            best_clusters,
-            population = list(debris = debris_clusts,
-                              non_debris = bact_indx)
-          )
-        bact_flow_frame <- split_flow_frame$non_debris
-      }
-
+      ks <- seq(1:2)
+      debris_clusts <- setdiff(ks, bact_indx)
+      split_flow_frame <-
+        flowClust::split(
+          flow_frame,
+          best_clusters,
+          population = list(debris = debris_clusts,
+                            non_debris = bact_indx)
+        )
+      bact_flow_frame <- split_flow_frame$non_debris
     }
     else {
-      ## if there is only one cluster
-      clst_fsc <-
-        flowClust::getEstimates(best_clusters, flow_frame)$locationsC[[1]]
-      clst_ssc <-
-        flowClust::getEstimates(best_clusters, flow_frame)$locationsC[[2]]
-      if ((clst_fsc < 4) &
-          (clst_ssc < 3)) {
-        # TODO: remove hardcoding of thresholds
-        print("only debris found")
-        bact_flow_frame <- 0
-      } else {
-        bact_flow_frame <- flow_frame[best_clusters, ]
-      }
+      bact_flow_frame <- flow_frame[best_clusters, ]
     }
 
     return(bact_flow_frame)
