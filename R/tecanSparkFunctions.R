@@ -92,6 +92,7 @@ spark_parse <- function(data_csv, layout_csv, timeseries=F) {
 
     # write parsed data to csv ------------------------------------------------
     out_name <- gsub(".csv", "_parsed.csv", data_csv)
+    out_name <- gsub(".xlsx", "_parsed.csv", out_name)
     utils::write.csv(x = out_data, file = out_name, row.names = FALSE)
 
     return(out_data)
