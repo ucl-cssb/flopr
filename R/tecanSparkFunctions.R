@@ -1,3 +1,31 @@
+#' Find next blank line
+#'
+#' @param start_idx
+#' @param data
+#'
+#' @return row index of next blank line
+next_blank <- function(start_idx, data){
+  next_start_idx <- start_idx
+  while (!is.na(data[next_start_idx, 1])) {
+    next_start_idx <- next_start_idx + 1
+  }
+  return(next_start_idx)
+}
+
+#' Find next non-blank line
+#'
+#' @param start_idx
+#' @param data
+#'
+#' @return row index of next non-blank line
+next_filled <- function(start_idx, data){
+  next_start_idx <- start_idx
+  while (is.na(data[next_start_idx, 1])) {
+    next_start_idx <- next_start_idx + 1
+  }
+  return(next_start_idx)
+}
+
 #' Parser for Tecan Spark plate reader data
 #'
 #' @param data_csv path to .csv, .xls or .xlsx file from Tecan Spark plate reader
@@ -32,7 +60,8 @@ spark_parse <- function(data_csv, layout_csv, timeseries=F) {
       start_time_idx <- start_time_idx[length(start_time_idx)]
     }
 
-    next_block_start_idx <- start_time_idx + 2
+    # find where the next block starts
+    next_block_start_idx <- next_filled(start_time_idx + 1, data)
 
     end_of_file <- F
     all_data <- c()
@@ -47,10 +76,7 @@ spark_parse <- function(data_csv, layout_csv, timeseries=F) {
       }
 
       # find where the end of the current measurement block is
-      block_end_idx <- next_block_start_idx
-      while (!is.na(data[block_end_idx, 1])) {
-        block_end_idx <- block_end_idx + 1
-      }
+      block_end_idx <- next_blank(next_block_start_idx, data)
 
       # grab the data only for that measurement
       new_block <- data[(next_block_start_idx + 1):(block_end_idx - 1), ]
@@ -71,7 +97,7 @@ spark_parse <- function(data_csv, layout_csv, timeseries=F) {
       all_data <- rbind(all_data, joined_block)
 
       #
-      next_block_start_idx <- block_end_idx + 1
+      next_block_start_idx <- next_filled(block_end_idx + 1, data)
     }
 
     # rearrange data ----------------------------------------------------------
