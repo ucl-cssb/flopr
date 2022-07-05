@@ -2,6 +2,7 @@
 
 export(biotek_parse)
 export(generate_cfs)
+export(infinite_parse)
 export(process_fcs)
 export(process_fcs_dir)
 export(process_plate)
