@@ -32,12 +32,14 @@ next_filled <- function(start_idx, data){
 #' @param layout_csv path to csv file containing plate layout information
 #' @param timeseries Boolean flag indicating whether the data is a timeseries or
 #' single recording. The Tecan software outputs the two scenarios differently.
+#' @param wells_as_columns Boolean flag indicating whether blocks of data are
+#' oriented with wells as columns or rows
 #'
 #' @return a data.frame containing the parsed plate reader data
 #' @export
 #' @importFrom rlang .data
 #'
-spark_parse <- function(data_csv, layout_csv, timeseries=F) {
+spark_parse <- function(data_csv, layout_csv, timeseries=F, wells_as_columns=F) {
 
   if(stringr::str_ends(data_csv, ".xlsx") | stringr::str_ends(data_csv, ".xls")){
     data <- as.data.frame(readxl::read_excel(path = data_csv,
@@ -82,12 +84,31 @@ spark_parse <- function(data_csv, layout_csv, timeseries=F) {
       new_block <- data[(next_block_start_idx + 1):(block_end_idx - 1), ]
       # new_block <- new_block[-c(1,3), ]  # remove cycle no. and temp.
 
-      # trim unecessary readings i.e. temp and cycle number
-      # and rename columns
-      times <- as.character(new_block[2,])
-      new_block <- new_block[-c(1:3), ]
-      names(new_block) <- times
-      names(new_block)[1] <- "well"
+      if(!wells_as_columns){
+        # trim unnecessary readings i.e. temp and cycle number
+        # and rename columns
+        times <- as.character(new_block[2,])
+        new_block <- new_block[-c(1:3), ]
+        names(new_block) <- times
+        names(new_block)[1] <- "well"
+        new_block <- new_block %>%
+          tidyr::pivot_longer(cols = 2:ncol(new_block),
+                              names_to = "time",
+                              values_to = "value",
+                              values_transform = list(value = as.numeric)) %>%
+          dplyr::mutate(time = as.numeric(time))
+      } else if(wells_as_columns){
+        wells <- new_block[1, -c(1,3)]
+        new_block <- new_block[-1,-c(1,3)]
+        names(new_block) <- wells
+        names(new_block)[1] <- "time"
+        new_block <- new_block %>%
+          tidyr::pivot_longer(cols = 2:ncol(new_block),
+                              names_to = "well",
+                              values_to = "value",
+                              values_transform = list(value = as.numeric)) %>%
+          dplyr::mutate(time = as.numeric(time))
+      }
 
       # add info for each well
       joined_block <- dplyr::full_join(plate_layout, new_block)
@@ -101,13 +122,7 @@ spark_parse <- function(data_csv, layout_csv, timeseries=F) {
     }
 
     # rearrange data ----------------------------------------------------------
-    layout_cols <- ncol(plate_layout)
     out_data <- all_data %>%
-      tidyr::pivot_longer(cols = (layout_cols+1):(ncol(all_data)-1),  # reshape so columns for each timepoint are collapsed into single "time" column and "value" column
-                          names_to = "time",
-                          names_transform = list(time=as.numeric),
-                          values_to = "value",
-                          values_transform = list(value=as.numeric)) %>%
       tidyr::pivot_wider(names_from = .data$measure, values_from = .data$value) %>%  # reshape so we have a column for each measurement type
       dplyr::mutate(row = substr(x = .data$well, start = 1, stop = 1)) %>%  # make a "row" column from the "well" column
       dplyr::mutate(column = as.numeric(substr(x = .data$well, start = 2,  # and make a "column" column
