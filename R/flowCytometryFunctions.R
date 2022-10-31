@@ -494,7 +494,7 @@ get_calibration <-
           break
         }
       }
-      if (is.na(cal_peaks)) {
+      if (anyNA(cal_peaks)) {
         ## if we don't have calibration data, skip this channel
         next
       }
