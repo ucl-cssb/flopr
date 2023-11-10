@@ -399,14 +399,21 @@ generate_cfs <- function(calibration_csv) {
 
   non_sat_values <- c()
   for(calib in unique(calibration_data$calibrant)){
+    # get values only for this calibrant
     temp_calib_values <- calibration_data %>%
-      dplyr::filter(.data$calibrant == calib)
+      dplyr::filter(.data$calibrant == calib) %>%
+      dplyr::arrange(desc(concentration))
 
-    concentrations <- sort(unique(temp_calib_values$concentration))
-    fold_dilution <- concentrations[3] / concentrations[2]
+    # get concentrations at which we have measurements
+    concentrations <- sort(unique(temp_calib_values$concentration), decreasing = T)
 
+    # calculate fold dilution used
+    fold_dilution <- concentrations[2] / concentrations[3]
+
+    # points are considered saturated if they have less than 75% measurement change relative to the fold_dilution
     high_saturation_threshold <- fold_dilution * 0.75
 
+    # work out dilution order from concentrations
     temp_calib_values$dilution_ratio <- 1 / fold_dilution
     temp_calib_values$max_concentration <- max(concentrations)
     temp_calib_values$dilution_idx <- - log(temp_calib_values$max_concentration / temp_calib_values$concentration) / log(temp_calib_values$dilution_ratio)
@@ -416,24 +423,15 @@ generate_cfs <- function(calibration_csv) {
       blank_sd <- stats::sd(temp_calib_values[temp_calib_values$concentration == 0,][[meas]], na.rm = T)
 
       for(rplct in unique(temp_calib_values$replicate)){
-        prev_value <- 0
-        for(conc in concentrations){
 
-          this_value <- temp_calib_values[temp_calib_values$concentration == conc & temp_calib_values$replicate == rplct,][[meas]]
-          if(is.na(this_value)){ next }
+        values <- temp_calib_values[temp_calib_values$replicate == rplct, meas]
+        saturated_1 <- values[1:(length(values)-1)] <= values[2:(length(values))] * high_saturation_threshold
+        saturated_2 <- values[2:(length(values))] >= values[1:(length(values)-1)] / high_saturation_threshold
+        saturated_3 <- values[1:(length(values)-1)] <= blank_mean + 2 * blank_sd
+        saturated_4 <- is.na(values[1:(length(values)-1)])
+        saturated <- saturated_1 | saturated_2 | saturated_3 | saturated_4
 
-          if(conc != 0){
-            ## check high saturation
-            if(this_value <= prev_value * high_saturation_threshold){
-              temp_calib_values[temp_calib_values$concentration == conc & temp_calib_values$replicate == rplct, meas] <- NA
-            }
-            ## check low saturation
-            if(this_value <= blank_mean + 2 * blank_sd){
-              temp_calib_values[temp_calib_values$concentration == conc & temp_calib_values$replicate == rplct, meas] <- NA
-            }
-          }
-          prev_value <- this_value
-        }
+        temp_calib_values[temp_calib_values$concentration %in% concentrations[1:(length(concentrations)-1)][saturated] & temp_calib_values$replicate == rplct, meas] <- NA
       }
     }
     non_sat_values <- rbind(non_sat_values, temp_calib_values)
@@ -441,7 +439,7 @@ generate_cfs <- function(calibration_csv) {
 
 
   # calculate mean of 4 replicates -------------
-  #
+
   summ_values <- non_sat_values %>%
     dplyr::group_by(.data$calibrant, .data$fluorophore, .data$media,
                     .data$concentration, .data$dilution_ratio,
@@ -504,14 +502,18 @@ generate_cfs <- function(calibration_csv) {
         return(error)
       }
 
-      res <- stats::optim(c(1e-10,0), error_func)
 
-      if(res$convergence == 0){
-        new_fit <- data.frame(cf = res$par[1], beta = res$par[2],
-                              calibrant = calib,
-                              fluorophore = temp_meas_calib_values$fluorophore[1],
-                              measure = meas)
-        fit_values <- rbind(fit_values, new_fit)
+      for(init_cf in c(1e-9, 1e-10, 1e-11, 1e-12, 1e-13, 1e-14)){
+        res <- stats::optim(c(init_cf, 0), error_func)
+
+        if(res$convergence == 0){
+          new_fit <- data.frame(cf = res$par[1], beta = res$par[2],
+                                calibrant = calib,
+                                fluorophore = temp_meas_calib_values$fluorophore[1],
+                                measure = meas)
+          fit_values <- rbind(fit_values, new_fit)
+          break
+        }
       }
     }
   }
@@ -540,7 +542,7 @@ generate_cfs <- function(calibration_csv) {
 
   flu_plt <-
     ggplot2::ggplot(data = long_values %>%
-                      dplyr::filter(.data$calibrant == "fluorescein")) +
+                      dplyr::filter(.data$calibrant %in% c("fluorescein", 'FITC'))) +
     ggplot2::geom_point(ggplot2::aes(x = dilution_idx,
                                      y = normalised_value)) +
     ggplot2::geom_line(ggplot2::aes(x = dilution_idx,

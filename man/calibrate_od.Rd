@@ -14,9 +14,6 @@ calibrate_od(pr_data, od_name, conversion_factors_csv)
 \item{conversion_factors_csv}{if to_MEFL=T, path of the csv file containing
 conversion factors from plate reader calibration}
 }
-\value{
-
-}
 \description{
 Convert arbitrary absorbance units to calibrated units
 }

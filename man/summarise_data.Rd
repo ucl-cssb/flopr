@@ -11,9 +11,6 @@ summarise_data(flow_frame, flu_channels)
 
 \item{flu_channels}{channels to summarise}
 }
-\value{
-
-}
 \description{
 Get geometric mean and standard deviation of fluorescence channels of a flow frame
 }

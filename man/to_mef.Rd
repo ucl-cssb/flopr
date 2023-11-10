@@ -17,9 +17,6 @@ get_calibration(...)}
 
 \item{normalise}{Boolean flag to indicate if data has been normalised}
 }
-\value{
-
-}
 \description{
 Calibrate fluorescence measurements
 }

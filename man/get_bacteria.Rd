@@ -12,9 +12,6 @@ get_bacteria(flow_frame, pre_cleaned)
 \item{pre_cleaned}{a flag to identify if debris has already been manually
 gated}
 }
-\value{
-
-}
 \description{
 Remove background debris events
 }

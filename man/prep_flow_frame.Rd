@@ -12,9 +12,6 @@ prep_flow_frame(flow_frame, flu_channels)
 \item{flu_channels}{a vector of strings of the fluorescence channels to keep
 in the processed data and plotting. Defaults to \code{"BL1-H"}.}
 }
-\value{
-
-}
 \description{
 Log10 transform and remove -Inf values from \code{flowFrame}
 }

@@ -18,9 +18,6 @@ calibrate_flu(pr_data, flu_name, flu_gain, od_name, conversion_factors_csv)
 \item{conversion_factors_csv}{if to_MEFL=T, path of the csv file containing
 conversion factors from plate reader calibration}
 }
-\value{
-
-}
 \description{
 Convert arbitrary fluorescence units to calibrated units
 }

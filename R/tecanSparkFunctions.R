@@ -6,7 +6,7 @@
 #' @return row index of next blank line
 next_blank <- function(start_idx, data){
   next_start_idx <- start_idx
-  while (!is.na(data[next_start_idx, 1])) {
+  while (any(!is.na(data[next_start_idx, ]))) {
     next_start_idx <- next_start_idx + 1
   }
   return(next_start_idx)

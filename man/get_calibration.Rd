@@ -26,9 +26,6 @@ one can manually specify the positions of the bead peaks (on a log10 scale).
 data. Default = 0.025. Increase if erroneous peaks are being found, decrease
  if not enough peaks are found.}
 }
-\value{
-
-}
 \description{
 Get fluorescence calibration curve parameters
 }

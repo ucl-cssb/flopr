@@ -9,9 +9,6 @@ get_singlets(flow_frame)
 \arguments{
 \item{flow_frame}{a \code{flowFrame} for processing}
 }
-\value{
-
-}
 \description{
 Remove doublet events
 }

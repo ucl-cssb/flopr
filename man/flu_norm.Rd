@@ -21,9 +21,6 @@ For now these include "polynomial", "invers_poly", "exponential", "spline" or "l
 
 \item{data_csv}{path to the original data. Used for saving normalisation curve plots.}
 }
-\value{
-
-}
 \description{
 Normalise fluorescence against negative well
 }
