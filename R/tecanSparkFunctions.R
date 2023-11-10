@@ -4,10 +4,30 @@
 #' @param data
 #'
 #' @return row index of next blank line
-next_blank <- function(start_idx, data){
+next_blank_row <- function(start_idx, data){
   next_start_idx <- start_idx
   while (any(!is.na(data[next_start_idx, ]))) {
     next_start_idx <- next_start_idx + 1
+    if(next_start_idx >= nrow(data)){
+      return(NA)
+    }
+  }
+  return(next_start_idx)
+}
+
+#' Find next blank line
+#'
+#' @param start_idx
+#' @param data
+#'
+#' @return row index of next blank line
+next_blank_cell <- function(start_idx, data, col){
+  next_start_idx <- start_idx
+  while (!is.na(data[next_start_idx, col])) {
+    next_start_idx <- next_start_idx + 1
+    if(next_start_idx >= nrow(data)){
+      return(NA)
+    }
   }
   return(next_start_idx)
 }
@@ -18,10 +38,30 @@ next_blank <- function(start_idx, data){
 #' @param data
 #'
 #' @return row index of next non-blank line
-next_filled <- function(start_idx, data){
+next_filled_row <- function(start_idx, data){
   next_start_idx <- start_idx
-  while (is.na(data[next_start_idx, 1])) {
+  while (any(is.na(data[next_start_idx, ]))) {
     next_start_idx <- next_start_idx + 1
+    if(next_start_idx >= nrow(data)){
+      return(NA)
+    }
+  }
+  return(next_start_idx)
+}
+
+#' Find next non-blank line
+#'
+#' @param start_idx
+#' @param data
+#'
+#' @return row index of next non-blank line
+next_filled_cell <- function(start_idx, data, col){
+  next_start_idx <- start_idx
+  while (is.na(data[next_start_idx, col])) {
+    next_start_idx <- next_start_idx + 1
+    if(next_start_idx >= nrow(data)){
+      return(NA)
+    }
   }
   return(next_start_idx)
 }
@@ -63,7 +103,7 @@ spark_parse <- function(data_csv, layout_csv, timeseries=F, wells_as_columns=F) 
     }
 
     # find where the next block starts
-    next_block_start_idx <- next_filled(start_time_idx + 1, data)
+    next_block_start_idx <- next_filled_cell(start_time_idx + 1, data, col=1)
 
     end_of_file <- F
     all_data <- c()
@@ -78,7 +118,7 @@ spark_parse <- function(data_csv, layout_csv, timeseries=F, wells_as_columns=F) 
       }
 
       # find where the end of the current measurement block is
-      block_end_idx <- next_blank(next_block_start_idx, data)
+      block_end_idx <- next_blank_cell(next_block_start_idx, data, col=1)
 
       # grab the data only for that measurement
       new_block <- data[(next_block_start_idx + 1):(block_end_idx - 1), ]
