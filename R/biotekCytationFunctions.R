@@ -110,13 +110,16 @@ cytation_parse <- function(data_csv, layout_csv, timeseries=T) {
     # get start and end block idxs
     start_block_idx <- which(data[, 2] == "Well")
     end_block_idx <- next_blank_row(start_idx = start_block_idx, data = data)
+    if(is.na(end_block_idx)){
+      end_block_idx <- nrow(data)
+    }
 
     # grab the data
     all_data <- data[start_block_idx:end_block_idx, 2:ncol(data)]
 
     # simplify names
     all_data <- all_data %>%
-      rowwise() %>%
+      dplyr::rowwise() %>%
       dplyr::mutate(...2 = unlist(strsplit(.data$...2, split = ':'))[1])  %>% # take first section of name
       dplyr::ungroup()
 
@@ -154,6 +157,6 @@ cytation_parse <- function(data_csv, layout_csv, timeseries=T) {
     }
     utils::write.csv(x = joined_block, file = out_name, row.names = FALSE)
 
-    return(out_data)
+    return(joined_block)
   }
 }
