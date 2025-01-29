@@ -44,28 +44,30 @@ process_plate <- function(data_csv, blank_well = "A1", neg_well = "A2",
                   width = 240, units = "mm")
 
   flu_norm_pr_data <- od_norm_pr_data
-  for (flu_idx in seq_len(length(flu_names))) {
-    flu_norm_pr_data <- flu_norm(flu_norm_pr_data, neg_well, blank_well,
-                                 flu_names[flu_idx], af_model, data_csv)
+  if(!is.na(flu_names)){
+    for (flu_idx in seq_len(length(flu_names))) {
+      flu_norm_pr_data <- flu_norm(flu_norm_pr_data, neg_well, blank_well,
+                                   flu_names[flu_idx], af_model, data_csv)
 
-    plt_flu <- ggplot2::ggplot(flu_norm_pr_data) +
-      ggplot2::geom_line(ggplot2::aes(x = .data$time, y = .data[[flu_names[flu_idx]]],
-                                      colour = "raw"), size = 0.2) +
-      ggplot2::geom_line(ggplot2::aes(x = .data$time,
-                                      y = .data[[paste("normalised_",
-                                                       flu_names[flu_idx],
-                                                       sep = "")]],
-                                      colour = "normalised"),
-                         size = 0.2) +
-      ggplot2::scale_x_continuous("time") +
-      ggplot2::scale_colour_discrete("") +
-      ggplot2::facet_grid(row~column) +
-      ggplot2::theme_bw(base_size = 8)
-    ggplot2::ggsave(filename = gsub(".csv",
-                                    paste("_", flu_names[flu_idx], ".pdf", sep = ""),
-                                    data_csv),
-                    plot = plt_flu, height = 160,
-                    width = 240, units = "mm")
+      plt_flu <- ggplot2::ggplot(flu_norm_pr_data) +
+        ggplot2::geom_line(ggplot2::aes(x = .data$time, y = .data[[flu_names[flu_idx]]],
+                                        colour = "raw"), size = 0.2) +
+        ggplot2::geom_line(ggplot2::aes(x = .data$time,
+                                        y = .data[[paste("normalised_",
+                                                         flu_names[flu_idx],
+                                                         sep = "")]],
+                                        colour = "normalised"),
+                           size = 0.2) +
+        ggplot2::scale_x_continuous("time") +
+        ggplot2::scale_colour_discrete("") +
+        ggplot2::facet_grid(row~column) +
+        ggplot2::theme_bw(base_size = 8)
+      ggplot2::ggsave(filename = gsub(".csv",
+                                      paste("_", flu_names[flu_idx], ".pdf", sep = ""),
+                                      data_csv),
+                      plot = plt_flu, height = 160,
+                      width = 240, units = "mm")
+    }
   }
 
   out_data <- flu_norm_pr_data
@@ -74,13 +76,15 @@ process_plate <- function(data_csv, blank_well = "A1", neg_well = "A2",
     out_data <- calibrate_od(out_data, od_name,
                              conversion_factors_csv)
 
-    for (flu_idx in seq_len(length(flu_names))) {
-      if(length(flu_gains) >= flu_idx){
-        out_data <- calibrate_flu(out_data, flu_names[flu_idx],
-                                  flu_gains[flu_idx], od_name,
-                                  conversion_factors_csv)
+    if(!is.na(flu_names)){
+      for (flu_idx in seq_len(length(flu_names))) {
+        if(length(flu_gains) >= flu_idx){
+          out_data <- calibrate_flu(out_data, flu_names[flu_idx],
+                                    flu_gains[flu_idx], od_name,
+                                    conversion_factors_csv)
+        }
+        else {break}
       }
-      else {break}
     }
   }
 
