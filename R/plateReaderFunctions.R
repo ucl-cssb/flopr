@@ -560,39 +560,22 @@ generate_cfs <- function(calibration_csv) {
 
   # plot the mean normalized values -----------------------------------------
 
-  abs_plt <-
-    ggplot2::ggplot(data = long_values %>%
-                      dplyr::filter(.data$calibrant == "microspheres")) +
-    ggplot2::geom_point(ggplot2::aes(x = dilution_idx,
-                                     y = normalised_value)) +
-    ggplot2::geom_line(ggplot2::aes(x = dilution_idx,
-                                    y = cf * max_concentration *
-                                      (1 - dilution_ratio - beta) *
-                                      (dilution_ratio + beta) ^ (dilution_idx - 1))) +
-    ggplot2::scale_y_continuous("Normalised Absorbance", trans = "log10") +
-    ggplot2::scale_x_continuous("Microspheres dilution") +
-    ggplot2::facet_wrap(~measure) +
-    ggplot2::theme_bw(base_size = 12)
+  for(calibrant in unique(long_values$calibrant)){
+    plt <- ggplot2::ggplot(data = long_values %>%
+                  dplyr::filter(.data$calibrant == calibrant)) +
+      ggplot2::geom_point(ggplot2::aes(x = .data$dilution_idx,
+                                       y = .data$normalised_value,
+                                       colour = .data$measure)) +
+      ggplot2::geom_line(ggplot2::aes(x = .data$dilution_idx,
+                                      y = .data$cf * .data$max_concentration *
+                                        (1 - .data$dilution_ratio - .data$beta) *
+                                        (.data$dilution_ratio + .data$beta) ^ (.data$dilution_idx - 1))) +
+      ggplot2::scale_y_continuous("Normalised measurement", trans = "log10") +
+      ggplot2::scale_x_continuous("Dilution index") +
+      ggplot2::facet_wrap(~measure) +
+      ggplot2::theme_bw(base_size = 12) +
 
-  ggplot2::ggsave(gsub(".csv", "_absorbance_cfs.pdf", calibration_csv),
-                  plot = abs_plt)
-
-  flu_plt <-
-    ggplot2::ggplot(data = long_values %>%
-                      dplyr::filter(.data$calibrant %in% c("fluorescein", 'FITC'))) +
-    ggplot2::geom_point(ggplot2::aes(x = dilution_idx,
-                                     y = normalised_value)) +
-    ggplot2::geom_line(ggplot2::aes(x = dilution_idx,
-                                    y = cf * max_concentration *
-                                      (1 - dilution_ratio - beta) *
-                                      (dilution_ratio + beta) ^ (dilution_idx - 1))) +
-    ggplot2::scale_y_continuous("Normalised Fluorescence", trans = "log10") +
-    ggplot2::scale_x_continuous("Fluorescein dilution") +
-    ggplot2::facet_wrap(~measure) +
-    ggplot2::theme_bw(base_size = 12)
-
-  ggplot2::ggsave(gsub(".csv", "_fluorescence_cfs.pdf", calibration_csv),
-                  plot = flu_plt)
+    ggplot2::ggsave(gsub(".csv", paste("_", calibrant, "_cfs.pdf", sep = ""), calibration_csv), plot = plt)
 
 
   # save conversion factors to a csv ----------------------------------------
