@@ -387,6 +387,8 @@ calibrate_flu <- function(pr_data, flu_name, flu_gain, od_name, conversion_facto
 #'
 #' @param calibration_csv path of a .csv file of your calibration data
 #'
+#' @return Saves a CSV file with columns: cf (conversion factor), beta (pipetting error parameter), calibrant, fluorophore, and measure. Each row corresponds to a fitted conversion factor for a calibrant/fluorophore/measure combination.
+#'
 #' @export
 #' @importFrom dplyr %>%
 #' @importFrom rlang .data :=
@@ -401,9 +403,9 @@ generate_cfs <- function(calibration_csv) {
 
 
   # remove saturated values -------------------------------------------------
-  # using similar approach to Beal et al. 2019 bioRxiv to assess validitiy of measurements
+  # using similar approach to Beal et al. 2019 bioRxiv to assess validity of measurements
 
-  non_sat_values <- list()
+  non_sat_values <- c()
   for(calib in unique(calibration_data$calibrant)){
     # get values only for this calibrant
     temp_calib_values <- calibration_data %>%
@@ -458,7 +460,7 @@ generate_cfs <- function(calibration_csv) {
   }
 
 
-  # calculate mean of 4 replicates -------------
+  # calculate mean of replicates -------------
 
   summ_values <- non_sat_values %>%
     dplyr::group_by(.data$calibrant, .data$fluorophore, .data$media,
@@ -560,9 +562,9 @@ generate_cfs <- function(calibration_csv) {
 
   # plot the mean normalized values -----------------------------------------
 
-  for(calibrant in unique(long_values$calibrant)){
+  for(calib in unique(long_values$calibrant)){
     plt <- ggplot2::ggplot(data = long_values %>%
-                             dplyr::filter(.data$calibrant == calibrant)) +
+                             dplyr::filter(.data$calibrant == calib)) +
       ggplot2::geom_point(ggplot2::aes(x = .data$dilution_idx,
                                        y = .data$normalised_value)) +
       ggplot2::geom_line(ggplot2::aes(x = .data$dilution_idx,
@@ -572,13 +574,11 @@ generate_cfs <- function(calibration_csv) {
       ggplot2::scale_y_continuous("Normalised measurement", trans = "log10") +
       ggplot2::scale_x_continuous("Dilution index") +
       ggplot2::facet_wrap(~measure) +
-      ggplot2::theme_bw(base_size = 12)
+      ggplot2::theme_bw(base_size = 8)
 
-      ggplot2::ggsave(gsub(".csv", paste("_", calibrant, "_cfs.pdf", sep = ""), calibration_csv), plot = plt)
+    ggplot2::ggsave(gsub(".csv", paste("_", calib, "_cfs.pdf", sep = ""), calibration_csv), plot = plt)
   }
 
-
-  # save conversion factors to a csv ----------------------------------------
-
   utils::write.csv(fit_values, gsub(".csv", "_cfs.csv", calibration_csv), row.names = FALSE)
+  return(fit_values)
 }
