@@ -403,7 +403,7 @@ generate_cfs <- function(calibration_csv) {
   # remove saturated values -------------------------------------------------
   # using similar approach to Beal et al. 2019 bioRxiv to assess validitiy of measurements
 
-  non_sat_values <- c()
+  non_sat_values <- list()
   for(calib in unique(calibration_data$calibrant)){
     # get values only for this calibrant
     temp_calib_values <- calibration_data %>%
@@ -413,8 +413,22 @@ generate_cfs <- function(calibration_csv) {
     # get concentrations at which we have measurements
     concentrations <- sort(unique(temp_calib_values$concentration), decreasing = T)
 
+    # safety check for minimum concentrations needed
+    if(length(concentrations) < 3) {
+      warning(paste("Calibrant", calib, "has fewer than 3 concentration points, skipping saturation detection"))
+      non_sat_values[[calib]] <- temp_calib_values
+      next
+    }
+
     # calculate fold dilution used
     fold_dilution <- concentrations[2] / concentrations[3]
+
+    # validation for fold dilution
+    if(!is.finite(fold_dilution) || fold_dilution <= 1) {
+      warning(paste("Invalid fold dilution for calibrant", calib, ":", fold_dilution))
+      non_sat_values[[calib]] <- temp_calib_values
+      next
+    }
 
     # points are considered saturated if they have less than 75% measurement change relative to the fold_dilution
     high_saturation_threshold <- fold_dilution * 0.75
