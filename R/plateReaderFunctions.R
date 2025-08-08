@@ -562,10 +562,9 @@ generate_cfs <- function(calibration_csv) {
 
   for(calibrant in unique(long_values$calibrant)){
     plt <- ggplot2::ggplot(data = long_values %>%
-                  dplyr::filter(.data$calibrant == calibrant)) +
+                             dplyr::filter(.data$calibrant == calibrant)) +
       ggplot2::geom_point(ggplot2::aes(x = .data$dilution_idx,
-                                       y = .data$normalised_value,
-                                       colour = .data$measure)) +
+                                       y = .data$normalised_value)) +
       ggplot2::geom_line(ggplot2::aes(x = .data$dilution_idx,
                                       y = .data$cf * .data$max_concentration *
                                         (1 - .data$dilution_ratio - .data$beta) *
@@ -573,9 +572,10 @@ generate_cfs <- function(calibration_csv) {
       ggplot2::scale_y_continuous("Normalised measurement", trans = "log10") +
       ggplot2::scale_x_continuous("Dilution index") +
       ggplot2::facet_wrap(~measure) +
-      ggplot2::theme_bw(base_size = 12) +
+      ggplot2::theme_bw(base_size = 12)
 
-    ggplot2::ggsave(gsub(".csv", paste("_", calibrant, "_cfs.pdf", sep = ""), calibration_csv), plot = plt)
+      ggplot2::ggsave(gsub(".csv", paste("_", calibrant, "_cfs.pdf", sep = ""), calibration_csv), plot = plt)
+  }
 
 
   # save conversion factors to a csv ----------------------------------------
