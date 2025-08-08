@@ -502,21 +502,38 @@ generate_cfs <- function(calibration_csv) {
       model <- 0
 
       error_func <- function(x){
-        data <- temp_meas_calib_values
+        # input validation
+        if(length(x) != 2) return(Inf)
+        if(!is.finite(x[1]) || !is.finite(x[2])) return(Inf)
+        if(x[1] <= 0) return(Inf)  # cf must be positive
 
+        data <- temp_meas_calib_values
         cf <- x[1]
         beta <- x[2]
         error <- 0
 
-        for(i in data$dilution_idx){
+        for(i in unique(data$dilution_idx)){
           data_i <- data[data$dilution_idx == i,]
 
-          b_i <- data_i$max_concentration * (1 - data_i$dilution_ratio - beta) *
-            (data_i$dilution_ratio + beta) ^ (data_i$dilution_idx - 1)
+          # Validate calculations
+          concentration_term <- (1 - data_i$dilution_ratio - beta)
+          dilution_term <- (data_i$dilution_ratio + beta)
 
-          e_i <- abs(log10(cf * b_i / data_i$normalised_value))^2
+          # Check for invalid concentrations
+          if(any(concentration_term <= 0) || any(dilution_term <= 0)) {
+            return(Inf)
+          }
 
-          error <- error + e_i
+          b_i <- data_i$max_concentration * concentration_term * dilution_term ^ (data_i$dilution_idx - 1)
+
+          # Check for zero or negative predicted values
+          predicted_value <- cf * b_i
+          if(any(predicted_value <= 0) || any(data_i$normalised_value <= 0)) {
+            return(Inf)
+          }
+
+          e_i <- abs(log10(predicted_value / data_i$normalised_value))^2
+          error <- error + sum(e_i, na.rm = TRUE)
         }
 
         return(error)
