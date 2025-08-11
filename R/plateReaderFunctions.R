@@ -444,10 +444,10 @@ generate_cfs <- function(calibration_csv) {
         values <- temp_calib_meas_values[temp_calib_meas_values$replicate == rplct,]$value
 
         # set up array to track saturated values
-        rep_saturated <- rep(FALSE, length(values))
+        rep_saturated <- rep('FALSE', length(values))
 
         top_down <- TRUE
-        for(i in seq_along(rep_saturated)){
+        for(i in 1:(length(rep_saturated)-1)){
           if(is.na(values[i])){
             rep_saturated[i] <- 'NA'
           }
