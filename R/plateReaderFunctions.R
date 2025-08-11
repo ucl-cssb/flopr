@@ -407,6 +407,8 @@ generate_cfs <- function(calibration_csv) {
 
   for(calib in unique(long_calibration_data$calibrant)){
     calib_output <- c()
+    processed_data <- c()
+
     # get values only for this calibrant
     temp_calib_values <- long_calibration_data %>%
       dplyr::filter(.data$calibrant == calib)
@@ -415,10 +417,14 @@ generate_cfs <- function(calibration_csv) {
       # get values only for this measure
       temp_calib_meas_values <- temp_calib_values %>%
         dplyr::filter(.data$measure == meas) %>%
-        dplyr::arrange(desc(concentration))
+        dplyr::arrange(dplyr::desc(.data$concentration)) %>%
+        dplyr::group_by(.data$calibrant) %>%
+        dplyr::mutate(norm_value = .data$value - mean(.data$value[.data$concentration == 0])) %>%
+        dplyr::ungroup()
 
       # remove saturated values -------------------------------------------------
       non_sat_values <- c()
+
       # get concentrations at which we have measurements
       concentrations <- sort(unique(temp_calib_meas_values$concentration), decreasing = T)
 
@@ -433,39 +439,44 @@ generate_cfs <- function(calibration_csv) {
       blank_mean <- mean(temp_calib_meas_values[temp_calib_meas_values$concentration == 0,]$value, na.rm = T)
       blank_sd <- stats::sd(temp_calib_meas_values[temp_calib_meas_values$concentration == 0,]$value, na.rm = T)
 
+      saturated_list <- c()
       for(rplct in unique(temp_calib_meas_values$replicate)){
         values <- temp_calib_meas_values[temp_calib_meas_values$replicate == rplct,]$value
 
         # set up array to track saturated values
-        saturated <- rep(FALSE, length(values))
+        rep_saturated <- rep(FALSE, length(values))
 
         top_down <- TRUE
-        for(i in 1:length((saturated))){
+        for(i in seq_along(rep_saturated)){
           if(is.na(values[i])){
-            saturated[i] <- TRUE
+            rep_saturated[i] <- 'NA'
           }
           else{
             if(top_down){
-              if((i < length(saturated)) & (values[i] <= (values[i+1] * (fold_dilution * 0.75)))){
-                saturated[i] <- TRUE
+              if((i < length(rep_saturated)) & (values[i] <= (values[i+1] * (fold_dilution * 0.75)))){
+                rep_saturated[i] <- 'TOP'
               } else {
                 top_down <- FALSE
               }
             }
             else {
               if((i > 1) & (values[i] >= (values[i-1] / (fold_dilution * 0.75)))){
-                saturated[i] <- TRUE
+                rep_saturated[i] <- 'BOTTOM'
               }
             }
 
             if(values[i] <= (blank_mean + 2*blank_sd)){
-              saturated[i] <- TRUE
+              rep_saturated[i] <- 'BLANK'
             }
           }
         }
-        temp_calib_meas_values[temp_calib_meas_values$concentration %in% concentrations[1:(length(concentrations)-1)][saturated] & temp_calib_meas_values$replicate == rplct,]$value <- NA
+
+        df_rep_saturated <- data.frame(saturated=rep_saturated, concentration=concentrations, replicate=rplct)
+        saturated_list <- dplyr::bind_rows(saturated_list, df_rep_saturated)
       }
-      non_sat_values <- rbind(non_sat_values, temp_calib_meas_values)
+      temp_calib_meas_values <- dplyr::full_join(temp_calib_meas_values, saturated_list)
+      non_sat_values <- rbind(non_sat_values, temp_calib_meas_values %>% filter(.data$saturated == 'FALSE'))
+      processed_data <- rbind(processed_data, temp_calib_meas_values)
 
       # calculate mean of replicates -------------
 
@@ -530,20 +541,35 @@ generate_cfs <- function(calibration_csv) {
     }
 
     # plot the mean normalized values -----------------------------------------
-      plt <- ggplot2::ggplot(data = calib_output %>%
-                               dplyr::filter(.data$calibrant == calib)) +
-        ggplot2::geom_point(ggplot2::aes(x = .data$dilution_idx,
-                                         y = .data$norm_value)) +
-        ggplot2::geom_line(ggplot2::aes(x = .data$dilution_idx,
-                                        y = .data$cf * .data$max_concentration *
-                                          (1 - .data$dilution_ratio - .data$beta) *
-                                          (.data$dilution_ratio + .data$beta) ^ (.data$dilution_idx - 1))) +
-        ggplot2::scale_y_continuous("Normalised measurement", trans = "log10") +
-        ggplot2::scale_x_continuous("Dilution index") +
-        ggplot2::facet_wrap(~measure) +
-        ggplot2::theme_bw(base_size = 8)
+    plt <- ggplot2::ggplot() +
+      ggplot2::geom_point(data = processed_data %>%
+                            dplyr::filter(.data$calibrant == calib),
+                          ggplot2::aes(x = .data$dilution_idx,
+                                       y = .data$norm_value),
+                          colour = 'red') +
+      ggplot2::geom_point(data = calib_output %>%
+                            dplyr::filter(.data$calibrant == calib),
+                          ggplot2::aes(x = .data$dilution_idx,
+                                       y = .data$norm_value)) +
+      ggplot2::geom_line(data = calib_output %>%
+                           dplyr::filter(.data$calibrant == calib),
+                         ggplot2::aes(x = .data$dilution_idx,
+                                      y = .data$cf * .data$max_concentration *
+                                        (1 - .data$dilution_ratio - .data$beta) *
+                                        (.data$dilution_ratio + .data$beta) ^ (.data$dilution_idx - 1))) +
+      ggplot2::scale_y_continuous("Normalised measurement", trans = "log10") +
+      ggplot2::scale_x_continuous("Dilution index") +
+      ggplot2::facet_wrap(~measure) +
+      ggplot2::theme_bw(base_size = 8)
 
-      ggplot2::ggsave(gsub(".csv", paste("_", calib, "_cfs.pdf", sep = ""), calibration_csv), plot = plt)
+    # calculate plot width and height by how many facets are created
+    n_facets <- length(unique(processed_data$measure))
+    facets_per_row <- ceiling(sqrt(n_facets))
+    num_rows <- ceiling(n_facets / facets_per_row)
+    plot_width <- 30 * facets_per_row
+    plot_height <- 30 * num_rows
+    ggplot2::ggsave(gsub(".csv", paste("_", calib, "_cfs.pdf", sep = ""), calibration_csv), plot = plt,
+                    width = plot_width, height = plot_height, units = "mm")
   }
 
   utils::write.csv(fit_values, gsub(".csv", "_cfs.csv", calibration_csv), row.names = FALSE)
