@@ -394,191 +394,398 @@ calibrate_flu <- function(pr_data, flu_name, flu_gain, od_name, conversion_facto
 #' @importFrom rlang .data :=
 generate_cfs <- function(calibration_csv) {
   calibration_data <- utils::read.csv(calibration_csv, header = T, check.names = F)
-
+  fit_values <- c()
 
   # get types of measure ----------------------------------------------------
   well_idx <- which(names(calibration_data) == "well")
   row_idx <- which(names(calibration_data) == "row")
   measures <- names(calibration_data)[(well_idx+1):(row_idx-1)]
 
+  long_calibration_data <- tidyr::pivot_longer(calibration_data,
+                                               cols = tidyselect::all_of(measures),
+                                               names_to = 'measure')
 
-  # remove saturated values -------------------------------------------------
-  # using similar approach to Beal et al. 2019 bioRxiv to assess validity of measurements
-
-  non_sat_values <- c()
-  for(calib in unique(calibration_data$calibrant)){
+  for(calib in unique(long_calibration_data$calibrant)){
+    calib_output <- c()
     # get values only for this calibrant
-    temp_calib_values <- calibration_data %>%
-      dplyr::filter(.data$calibrant == calib) %>%
-      dplyr::arrange(desc(concentration))
+    temp_calib_values <- long_calibration_data %>%
+      dplyr::filter(.data$calibrant == calib)
 
-    # get concentrations at which we have measurements
-    concentrations <- sort(unique(temp_calib_values$concentration), decreasing = T)
-
-    # safety check for minimum concentrations needed
-    if(length(concentrations) < 3) {
-      warning(paste("Calibrant", calib, "has fewer than 3 concentration points, skipping saturation detection"))
-      non_sat_values[[calib]] <- temp_calib_values
-      next
-    }
-
-    # calculate fold dilution used
-    fold_dilution <- concentrations[2] / concentrations[3]
-
-    # validation for fold dilution
-    if(!is.finite(fold_dilution) || fold_dilution <= 1) {
-      warning(paste("Invalid fold dilution for calibrant", calib, ":", fold_dilution))
-      non_sat_values[[calib]] <- temp_calib_values
-      next
-    }
-
-    # points are considered saturated if they have less than 75% measurement change relative to the fold_dilution
-    high_saturation_threshold <- fold_dilution * 0.75
-
-    # work out dilution order from concentrations
-    temp_calib_values$dilution_ratio <- 1 / fold_dilution
-    temp_calib_values$max_concentration <- max(concentrations)
-    temp_calib_values$dilution_idx <- - log(temp_calib_values$max_concentration / temp_calib_values$concentration) / log(temp_calib_values$dilution_ratio)
-
-    for(meas in measures){
-      blank_mean <- mean(temp_calib_values[temp_calib_values$concentration == 0,][[meas]], na.rm = T)
-      blank_sd <- stats::sd(temp_calib_values[temp_calib_values$concentration == 0,][[meas]], na.rm = T)
-
-      for(rplct in unique(temp_calib_values$replicate)){
-
-        values <- temp_calib_values[temp_calib_values$replicate == rplct, meas]
-        saturated_1 <- values[1:(length(values)-1)] <= values[2:(length(values))] * high_saturation_threshold
-        saturated_2 <- values[2:(length(values))] >= values[1:(length(values)-1)] / high_saturation_threshold
-        saturated_3 <- values[1:(length(values)-1)] <= blank_mean + 2 * blank_sd
-        saturated_4 <- is.na(values[1:(length(values)-1)])
-        saturated <- saturated_1 | saturated_2 | saturated_3 | saturated_4
-
-        temp_calib_values[temp_calib_values$concentration %in% concentrations[1:(length(concentrations)-1)][saturated] & temp_calib_values$replicate == rplct, meas] <- NA
-      }
-    }
-    non_sat_values <- rbind(non_sat_values, temp_calib_values)
-  }
-
-
-  # calculate mean of replicates -------------
-
-  summ_values <- non_sat_values %>%
-    dplyr::group_by(.data$calibrant, .data$fluorophore, .data$media,
-                    .data$concentration, .data$dilution_ratio,
-                    .data$max_concentration, .data$dilution_idx, .drop = F) %>%
-    dplyr::summarise_at(measures, mean, na.rm = TRUE) %>%
-    dplyr::filter(!is.na(.data$concentration))
-
-
-  # normalise data ----------------------------------------------------------
-
-  norm_values <- summ_values
-  for(meas in measures){
-    norm_values <- norm_values %>%
-      dplyr::group_by(.data$calibrant) %>%
-      dplyr::mutate({{meas}} := .data[[meas]] -
-                      .data[[meas]][.data$concentration == 0])
-  }
-  norm_values <- norm_values %>% dplyr::filter(.data$concentration != 0)
-
-
-  # fit pipetting error model for conversion factors ------------------------
-  # error model from Beal et al. 2019 bioRxiv
-
-  long_values <- stats::na.omit(norm_values %>%
-                                  tidyr::pivot_longer(tidyselect::all_of(measures),
-                                                      names_to = "measure",
-                                                      values_to = "normalised_value"))
-
-  fit_values <- c()
-  for(calib in unique(long_values$calibrant)){
-    temp_calib_values <- long_values %>% dplyr::filter(.data$calibrant == calib)
     for(meas in unique(temp_calib_values$measure)){
-      temp_meas_calib_values <- temp_calib_values %>%
-        dplyr::filter(.data$measure == meas)
+      # get values only for this measure
+      temp_calib_meas_values <- temp_calib_values %>%
+        dplyr::filter(.data$measure == meas) %>%
+        dplyr::arrange(desc(concentration))
 
-      if(nrow(temp_meas_calib_values) < 3){
+      # remove saturated values -------------------------------------------------
+      non_sat_values <- c()
+      # get concentrations at which we have measurements
+      concentrations <- sort(unique(temp_calib_meas_values$concentration), decreasing = T)
+
+      # calculate fold dilution used
+      fold_dilution <- concentrations[2] / concentrations[3]
+
+      # work out dilution order from concentrations
+      temp_calib_meas_values$dilution_ratio <- 1 / fold_dilution
+      temp_calib_meas_values$max_concentration <- max(concentrations)
+      temp_calib_meas_values$dilution_idx <- as.integer(round(- log(temp_calib_meas_values$max_concentration / temp_calib_meas_values$concentration) / log(temp_calib_meas_values$dilution_ratio)))
+
+      blank_mean <- mean(temp_calib_meas_values[temp_calib_meas_values$concentration == 0,]$value, na.rm = T)
+      blank_sd <- stats::sd(temp_calib_meas_values[temp_calib_meas_values$concentration == 0,]$value, na.rm = T)
+
+      for(rplct in unique(temp_calib_meas_values$replicate)){
+        values <- temp_calib_meas_values[temp_calib_meas_values$replicate == rplct,]$value
+
+        # set up array to track saturated values
+        saturated <- rep(FALSE, length(values))
+
+        top_down <- TRUE
+        for(i in 1:length((saturated))){
+          if(is.na(values[i])){
+            saturated[i] <- TRUE
+          }
+          else{
+            if(top_down){
+              if((i < length(saturated)) & (values[i] <= (values[i+1] * (fold_dilution * 0.75)))){
+                saturated[i] <- TRUE
+              } else {
+                top_down <- FALSE
+              }
+            }
+            else {
+              if((i > 1) & (values[i] >= (values[i-1] / (fold_dilution * 0.75)))){
+                saturated[i] <- TRUE
+              }
+            }
+
+            if(values[i] <= (blank_mean + 2*blank_sd)){
+              saturated[i] <- TRUE
+            }
+          }
+        }
+        temp_calib_meas_values[temp_calib_meas_values$concentration %in% concentrations[1:(length(concentrations)-1)][saturated] & temp_calib_meas_values$replicate == rplct,]$value <- NA
+      }
+      non_sat_values <- rbind(non_sat_values, temp_calib_meas_values)
+
+      # calculate mean of replicates -------------
+
+      summ_values <- non_sat_values %>%
+        dplyr::group_by(.data$calibrant, .data$fluorophore, .data$media, .data$measure,
+                        .data$concentration, .data$dilution_ratio,
+                        .data$max_concentration, .data$dilution_idx, .drop = F) %>%
+        dplyr::summarise(mean_value = mean(.data$value, na.rm = TRUE)) %>%
+        dplyr::filter(!is.na(.data$concentration))
+
+      # normalise data ----------------------------------------------------------
+
+      norm_values <- summ_values %>%
+        dplyr::group_by(.data$calibrant) %>%
+        dplyr::mutate(norm_value = .data$mean_value - .data$mean_value[.data$concentration == 0]) %>%
+        dplyr::filter(.data$concentration != 0) %>%
+        dplyr::ungroup() %>%
+        na.omit()
+
+      # fit pipetting error model for conversion factors ------------------------
+      # error model from Beal et al. 2019 bioRxiv
+
+
+      if(nrow(norm_values) < 3){
         next
       }
 
-      model <- 0
-
       error_func <- function(x){
-        # input validation
-        if(length(x) != 2) return(Inf)
-        if(!is.finite(x[1]) || !is.finite(x[2])) return(Inf)
-        if(x[1] <= 0) return(Inf)  # cf must be positive
 
-        data <- temp_meas_calib_values
+        data <- norm_values
         cf <- x[1]
         beta <- x[2]
         error <- 0
 
-        for(i in unique(data$dilution_idx)){
+        for(i in data$dilution_idx){
           data_i <- data[data$dilution_idx == i,]
 
-          # Validate calculations
-          concentration_term <- (1 - data_i$dilution_ratio - beta)
-          dilution_term <- (data_i$dilution_ratio + beta)
+          b_i <- data_i$max_concentration * (1 - data_i$dilution_ratio - beta) *
+            (data_i$dilution_ratio + beta) ^ (data_i$dilution_idx - 1)
 
-          # Check for invalid concentrations
-          if(any(concentration_term <= 0) || any(dilution_term <= 0)) {
-            return(Inf)
-          }
-
-          b_i <- data_i$max_concentration * concentration_term * dilution_term ^ (data_i$dilution_idx - 1)
-
-          # Check for zero or negative predicted values
-          predicted_value <- cf * b_i
-          if(any(predicted_value <= 0) || any(data_i$normalised_value <= 0)) {
-            return(Inf)
-          }
-
-          e_i <- abs(log10(predicted_value / data_i$normalised_value))^2
-          error <- error + sum(e_i, na.rm = TRUE)
+          e_i <- abs(log10(cf * b_i / data_i$norm_value))^2
+          error <- error + e_i
         }
 
         return(error)
       }
 
-
-      for(init_cf in c(1e-9, 1e-10, 1e-11, 1e-12, 1e-13, 1e-14)){
+      for(init_cf in 10^seq(-8, -16)){
         res <- stats::optim(c(init_cf, 0), error_func)
 
         if(res$convergence == 0){
           new_fit <- data.frame(cf = res$par[1], beta = res$par[2],
                                 calibrant = calib,
-                                fluorophore = temp_meas_calib_values$fluorophore[1],
+                                fluorophore = norm_values$fluorophore[1],
                                 measure = meas)
           fit_values <- rbind(fit_values, new_fit)
           break
         }
       }
+
+      calib_output <- rbind(calib_output, dplyr::full_join(norm_values, new_fit))
     }
-  }
 
-  long_values <- dplyr::full_join(long_values, fit_values)
+    # plot the mean normalized values -----------------------------------------
+      plt <- ggplot2::ggplot(data = calib_output %>%
+                               dplyr::filter(.data$calibrant == calib)) +
+        ggplot2::geom_point(ggplot2::aes(x = .data$dilution_idx,
+                                         y = .data$norm_value)) +
+        ggplot2::geom_line(ggplot2::aes(x = .data$dilution_idx,
+                                        y = .data$cf * .data$max_concentration *
+                                          (1 - .data$dilution_ratio - .data$beta) *
+                                          (.data$dilution_ratio + .data$beta) ^ (.data$dilution_idx - 1))) +
+        ggplot2::scale_y_continuous("Normalised measurement", trans = "log10") +
+        ggplot2::scale_x_continuous("Dilution index") +
+        ggplot2::facet_wrap(~measure) +
+        ggplot2::theme_bw(base_size = 8)
 
-
-  # plot the mean normalized values -----------------------------------------
-
-  for(calib in unique(long_values$calibrant)){
-    plt <- ggplot2::ggplot(data = long_values %>%
-                             dplyr::filter(.data$calibrant == calib)) +
-      ggplot2::geom_point(ggplot2::aes(x = .data$dilution_idx,
-                                       y = .data$normalised_value)) +
-      ggplot2::geom_line(ggplot2::aes(x = .data$dilution_idx,
-                                      y = .data$cf * .data$max_concentration *
-                                        (1 - .data$dilution_ratio - .data$beta) *
-                                        (.data$dilution_ratio + .data$beta) ^ (.data$dilution_idx - 1))) +
-      ggplot2::scale_y_continuous("Normalised measurement", trans = "log10") +
-      ggplot2::scale_x_continuous("Dilution index") +
-      ggplot2::facet_wrap(~measure) +
-      ggplot2::theme_bw(base_size = 8)
-
-    ggplot2::ggsave(gsub(".csv", paste("_", calib, "_cfs.pdf", sep = ""), calibration_csv), plot = plt)
+      ggplot2::ggsave(gsub(".csv", paste("_", calib, "_cfs.pdf", sep = ""), calibration_csv), plot = plt)
   }
 
   utils::write.csv(fit_values, gsub(".csv", "_cfs.csv", calibration_csv), row.names = FALSE)
   return(fit_values)
 }
+
+
+#
+#
+#   # remove saturated values -------------------------------------------------
+#   # using similar approach to Beal et al. 2019 bioRxiv to assess validity of measurements
+#   # the expected value for a datapoint is the value of the next (more dilute) datapoint times fold_diltuion (or value of the previous (more concentrated) datapoint divided by fold_dilution)
+#   # 1. starting with the most concentrated datapoint, we consider it saturated if its value is less than 75% of the expected value
+#   # 2. then, starting from the least concentrated datapoint, we can it saturated if its value is more than 125% of the expected value
+#   # 3. we also consider a datapoint saturated if it is within 2 standard deviations of the blank (concentration=0) value
+#   # 4. and some plate readers give saturated values an NA
+#
+#   # applying both 1 and 2 can cause issues because, if the higher datapoint is considered saturated by method 1, the lower datapoint will be considered saturated by method 2.
+#   # as such, working from the most concentrated, if datapoint A is considered saturated by method 1, we should not classify datapoint B as saturated by method 2
+#
+#
+#   non_sat_values <- c()
+#   for(calib in unique(calibration_data$calibrant)){
+#     # get values only for this calibrant
+#     temp_calib_values <- calibration_data %>%
+#       dplyr::filter(.data$calibrant == calib) %>%
+#       dplyr::arrange(desc(concentration))
+#
+#     # get concentrations at which we have measurements
+#     concentrations <- sort(unique(temp_calib_values$concentration), decreasing = T)
+#
+#     # # safety check for minimum concentrations needed
+#     # if(length(concentrations) < 3) {
+#     #   warning(paste("Calibrant", calib, "has fewer than 3 concentration points, skipping saturation detection"))
+#     #   non_sat_values[[calib]] <- temp_calib_values
+#     #   next
+#     # }
+#
+#     # calculate fold dilution used
+#     fold_dilution <- concentrations[2] / concentrations[3]
+#
+#     # # validation for fold dilution
+#     # if(!is.finite(fold_dilution) || fold_dilution <= 1) {
+#     #   warning(paste("Invalid fold dilution for calibrant", calib, ":", fold_dilution))
+#     #   non_sat_values[[calib]] <- temp_calib_values
+#     #   next
+#     # }
+#
+#     # points are considered saturated if they have less than 75% measurement change relative to the fold_dilution
+#     high_saturation_threshold <- fold_dilution * 0.75
+#
+#     # work out dilution order from concentrations
+#     temp_calib_values$dilution_ratio <- 1 / fold_dilution
+#     temp_calib_values$max_concentration <- max(concentrations)
+#     temp_calib_values$dilution_idx <- as.integer(- log(temp_calib_values$max_concentration / temp_calib_values$concentration) / log(temp_calib_values$dilution_ratio))
+#
+#     for(meas in measures){
+#       blank_mean <- mean(temp_calib_values[temp_calib_values$concentration == 0,][[meas]], na.rm = T)
+#       blank_sd <- stats::sd(temp_calib_values[temp_calib_values$concentration == 0,][[meas]], na.rm = T)
+#
+#
+#       for(rplct in unique(temp_calib_values$replicate)){
+#         values <- temp_calib_values[temp_calib_values$replicate == rplct, meas]
+#
+#         # set up array to track saturated values
+#         saturated <- rep.int(0, length(values))
+#
+#         top_down <- TRUE
+#         for(i in 1:length((saturated))){
+#           if(is.na(values[i])){
+#             saturated[i] <- 1
+#           }
+#           else{
+#             if(top_down){
+#               if((i < length(saturated)) & (values[i] <= (values[i+1] * (fold_dilution * 0.75)))){
+#                 saturated[i] <- 1
+#               } else {
+#                 top_down <- FALSE
+#               }
+#             }
+#             else {
+#               if((i >= 2) & (values[i] >= (values[i-1] / (fold_dilution * 0.75)))){
+#                 saturated[i] <- 1
+#               }
+#             }
+#
+#             if(values[i] <= (blank_mean + 2*blank_sd)){
+#               saturated[i] <- 1
+#             }
+#           }
+#         }
+#         temp_calib_values[temp_calib_values$concentration %in% concentrations[1:(length(concentrations)-1)][saturated] & temp_calib_values$replicate == rplct, meas] <- NA
+#       }
+#
+#       # for(rplct in unique(temp_calib_values$replicate)){
+#       #
+#       #
+#       #   values <- temp_calib_values[temp_calib_values$replicate == rplct, meas]
+#       #   saturated_1 <- values[1:(length(values)-2)] <= values[2:(length(values)-1)] * high_saturation_threshold
+#       #   saturated_2 <- values[2:(length(values)-1)] >= values[1:(length(values)-2)] / high_saturation_threshold
+#       #   saturated_3 <- values[1:(length(values)-2)] <= blank_mean + 2 * blank_sd
+#       #   saturated_4 <- is.na(values[1:(length(values)-2)])
+#       #   saturated <- saturated_1 | saturated_2 | saturated_3 | saturated_4
+#       #   # saturated <- saturated_2 | saturated_3 | saturated_4
+#       #
+#       #   temp_calib_values[temp_calib_values$concentration %in% concentrations[1:(length(concentrations)-1)][saturated] & temp_calib_values$replicate == rplct, meas] <- NA
+#       # }
+#     }
+#     non_sat_values <- rbind(non_sat_values, temp_calib_values)
+#   }
+#
+#
+#   # calculate mean of replicates -------------
+#
+#   summ_values <- non_sat_values %>%
+#     dplyr::group_by(.data$calibrant, .data$fluorophore, .data$media,
+#                     .data$concentration, .data$dilution_ratio,
+#                     .data$max_concentration, .data$dilution_idx, .drop = F) %>%
+#     dplyr::summarise_at(measures, mean, na.rm = TRUE) %>%
+#     dplyr::filter(!is.na(.data$concentration))
+#
+#
+#   # normalise data ----------------------------------------------------------
+#
+#   norm_values <- summ_values
+#   for(meas in measures){
+#     norm_values <- norm_values %>%
+#       dplyr::group_by(.data$calibrant) %>%
+#       dplyr::mutate({{meas}} := .data[[meas]] -
+#                       .data[[meas]][.data$concentration == 0])
+#   }
+#   norm_values <- norm_values %>% dplyr::filter(.data$concentration != 0)
+#
+#
+#   # fit pipetting error model for conversion factors ------------------------
+#   # error model from Beal et al. 2019 bioRxiv
+#
+#   long_values <- stats::na.omit(norm_values %>%
+#                                   tidyr::pivot_longer(tidyselect::all_of(measures),
+#                                                       names_to = "measure",
+#                                                       values_to = "normalised_value"))
+#
+#   fit_values <- c()
+#   for(calib in unique(long_values$calibrant)){
+#     print(calib)
+#     temp_calib_values <- long_values %>% dplyr::filter(.data$calibrant == calib)
+#     for(meas in unique(temp_calib_values$measure)){
+#       print(meas)
+#       temp_meas_calib_values <- temp_calib_values %>%
+#         dplyr::filter(.data$measure == meas)
+#
+#       print(temp_meas_calib_values)
+#
+#       if(nrow(temp_meas_calib_values) < 3){
+#         next
+#       }
+#
+#       model <- 0
+#
+#       error_func <- function(x){
+#         # # input validation
+#         # if(length(x) != 2) return(Inf)
+#         # if(!is.finite(x[1]) || !is.finite(x[2])) return(Inf)
+#         # if(x[1] <= 0) return(Inf)  # cf must be positive
+#
+#         data <- temp_meas_calib_values
+#         cf <- x[1]
+#         beta <- x[2]
+#         error <- 0
+#
+#         for(i in data$dilution_idx){
+#           data_i <- data[data$dilution_idx == i,]
+#
+#           b_i <- data_i$max_concentration * (1 - data_i$dilution_ratio - beta) *
+#             (data_i$dilution_ratio + beta) ^ (data_i$dilution_idx - 1)
+#
+#           # # Validate calculations
+#           # concentration_term <- (1 - data_i$dilution_ratio - beta)
+#           # dilution_term <- (data_i$dilution_ratio + beta)
+#           #
+#           # # Check for invalid concentrations
+#           # if(any(concentration_term <= 0) || any(dilution_term <= 0)) {
+#           #   return(Inf)
+#           # }
+#           #
+#           # b_i <- data_i$max_concentration * concentration_term * dilution_term ^ (data_i$dilution_idx - 1)
+#
+#           e_i <- abs(log10(cf * b_i / data_i$normalised_value))^2
+#           error <- error + e_i
+#           #
+#           # # Check for zero or negative predicted values
+#           # predicted_value <- cf * b_i
+#           # if(any(predicted_value <= 0) || any(data_i$normalised_value <= 0)) {
+#           #   return(Inf)
+#           # }
+#           #
+#           # e_i <- abs(log10(predicted_value / data_i$normalised_value))^2
+#           # error <- error + sum(e_i, na.rm = TRUE)
+#         }
+#
+#         return(error)
+#       }
+#
+#
+#       for(init_cf in c(1e-9, 1e-10, 1e-11, 1e-12, 1e-13, 1e-14)){
+#         print(init_cf)
+#         res <- stats::optim(c(init_cf, 0), error_func)
+#
+#         if(res$convergence == 0){
+#           new_fit <- data.frame(cf = res$par[1], beta = res$par[2],
+#                                 calibrant = calib,
+#                                 fluorophore = temp_meas_calib_values$fluorophore[1],
+#                                 measure = meas)
+#           fit_values <- rbind(fit_values, new_fit)
+#           break
+#         }
+#       }
+#     }
+#   }
+#
+#   long_values <- dplyr::full_join(long_values, fit_values)
+#
+#
+#   # plot the mean normalized values -----------------------------------------
+#
+#   for(calib in unique(long_values$calibrant)){
+#     plt <- ggplot2::ggplot(data = long_values %>%
+#                              dplyr::filter(.data$calibrant == calib)) +
+#       ggplot2::geom_point(ggplot2::aes(x = .data$dilution_idx,
+#                                        y = .data$normalised_value)) +
+#       ggplot2::geom_line(ggplot2::aes(x = .data$dilution_idx,
+#                                       y = .data$cf * .data$max_concentration *
+#                                         (1 - .data$dilution_ratio - .data$beta) *
+#                                         (.data$dilution_ratio + .data$beta) ^ (.data$dilution_idx - 1))) +
+#       ggplot2::scale_y_continuous("Normalised measurement", trans = "log10") +
+#       ggplot2::scale_x_continuous("Dilution index") +
+#       ggplot2::facet_wrap(~measure) +
+#       ggplot2::theme_bw(base_size = 8)
+#
+#     ggplot2::ggsave(gsub(".csv", paste("_", calib, "_cfs.pdf", sep = ""), calibration_csv), plot = plt)
+#   }
+#
+#   utils::write.csv(fit_values, gsub(".csv", "_cfs.csv", calibration_csv), row.names = FALSE)
+#   return(fit_values)
+# }
