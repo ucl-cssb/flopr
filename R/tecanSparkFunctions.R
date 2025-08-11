@@ -1,3 +1,29 @@
+#' Find next line containing a given string
+#'
+#' @param start_idx Row index at which to start search
+#' @param string String containing a regular expression to search for. Empty cell might be stored as NA in the dataframe
+#' @param data dataframe to search within
+#' @param col Optional column to search within, searches whole row by default
+#'
+#' @return row index
+next_char_row <- function(start_idx, string=NA, data, col=NA) {
+  if (is.na(col)) {
+    col <- seq_len(ncol(data))
+  }
+  for (i in start_idx:nrow(data)) {
+    if (is.na(string)) {
+      if(all(is.na(data[i, col]))) {
+        return(i)
+      }
+    } else {
+      if (any(grepl(string, data[i, col], fixed = TRUE))) {
+        return(i)
+      }
+    }
+  }
+  return(NA)
+}
+
 #' Find next blank line
 #'
 #' @param start_idx
@@ -179,19 +205,25 @@ spark_parse <- function(data_csv, layout_csv, timeseries=F, wells_as_columns=F) 
     return(out_data)
   }
   else if (timeseries == FALSE){
-    start_time_idx <- which(data[, 1] == "Start Time")  # get start and end time ids
-    end_idx <- which(data[, 1] == "End Time")
+    # We use 'Name' in the first column to identify the start of a measurement block
     names_idx <- which(data[, 1] == "Name")
     names_idx <- names_idx[2:length(names_idx)]  # remove the first start time entry which just details plate type
 
+    if (length(names_idx) == 0) {
+      stop("No measurement blocks found in the data.")
+    }
+
     all_data <- c()
-    for (i in seq_len(length(start_time_idx))) {
+    for (i in seq_len(length(names_idx))) {
       block_name <- data[names_idx[i], 2]  # record name of what is being measured
 
-      block_start <- start_time_idx[i] + 4  # find start and end of measurement block
-      block_end_idx <- end_idx[i] - 3
+      # the next '<>' following 'Name' is used as the start point for the data in the measurement block
+      block_start <- next_char_row(start_idx = names_idx[i] + 1, string = "<>", data = data) + 1
 
-      new_block <- data[(block_start):(block_end_idx), 1:2]  # grab and name the data
+      # the next '' following '<>' is used as the end point for the data in the measurement block
+      block_end <- next_char_row(start_idx = block_start + 1, string = NA, data = data) - 1
+
+      new_block <- data[(block_start):(block_end), 1:2]  # grab and name the data
       names(new_block)[1] <- "well"
       names(new_block)[2] <- "value"
 
@@ -213,7 +245,13 @@ spark_parse <- function(data_csv, layout_csv, timeseries=F, wells_as_columns=F) 
                                                               .data$column))
 
     # write parsed data to csv ------------------------------------------------
-    out_name <- gsub(".csv", "_parsed.csv", data_csv)
+    if(stringr::str_ends(data_csv, ".xlsx")){
+      out_name <- gsub(".xlsx", "_parsed.csv", data_csv)
+    } else if(stringr::str_ends(data_csv, ".xls")){
+      out_name <- gsub(".xls", "_parsed.csv", data_csv)
+    } else if(stringr::str_ends(data_csv, ".csv")){
+      out_name <- gsub(".csv", "_parsed.csv", data_csv)
+    }
     utils::write.csv(x = spread_data, file = out_name, row.names = FALSE)
 
     return(spread_data)
