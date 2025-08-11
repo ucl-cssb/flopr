@@ -153,7 +153,7 @@ cytation_parse <- function(data_csv, layout_csv, timeseries=T) {
     } else if(stringr::str_ends(data_csv, ".xls")){
       out_name <- gsub(".xls", "_parsed.csv", data_csv)
     } else if(stringr::str_ends(data_csv, ".csv")){
-      out_name <- gsub(".xls", "_parsed.csv", data_csv)
+      out_name <- gsub(".csv", "_parsed.csv", data_csv)
     }
     utils::write.csv(x = joined_block, file = out_name, row.names = FALSE)
 
