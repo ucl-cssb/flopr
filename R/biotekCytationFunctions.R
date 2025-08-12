@@ -112,6 +112,8 @@ cytation_parse <- function(data_csv, layout_csv, timeseries=T) {
     end_block_idx <- next_blank_row(start_idx = start_block_idx, data = data)
     if(is.na(end_block_idx)){
       end_block_idx <- nrow(data)
+    } else {
+      end_block_idx <- end_block_idx -1
     }
 
     # grab the data
@@ -129,7 +131,6 @@ cytation_parse <- function(data_csv, layout_csv, timeseries=T) {
     # 1st row contains column names
     names(all_data) <- all_data[1,]
     all_data <- all_data[-1,]
-    all_data <- all_data[, -length(all_data)]
 
     # convert to numeric
     all_data <- all_data %>%
