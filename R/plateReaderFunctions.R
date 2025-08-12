@@ -406,6 +406,10 @@ generate_cfs <- function(calibration_csv) {
                                                names_to = 'measure')
 
   for(calib in unique(long_calibration_data$calibrant)){
+    if(calib == "" | is.na(calib)){
+      next
+    }
+
     calib_output <- c()
     processed_data <- c()
 
@@ -493,16 +497,14 @@ generate_cfs <- function(calibration_csv) {
         dplyr::group_by(.data$calibrant) %>%
         dplyr::mutate(norm_value = .data$mean_value - .data$mean_value[.data$concentration == 0]) %>%
         dplyr::filter(.data$concentration != 0) %>%
-        dplyr::ungroup() %>%
-        na.omit()
-
-      # fit pipetting error model for conversion factors ------------------------
-      # error model from Beal et al. 2019 bioRxiv
-
+        dplyr::ungroup()
 
       if(nrow(norm_values) < 3){
         next
       }
+
+      # fit pipetting error model for conversion factors ------------------------
+      # error model from Beal et al. 2019 bioRxiv
 
       error_func <- function(x){
 
