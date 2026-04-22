@@ -44,7 +44,7 @@ process_plate <- function(data_csv, blank_well = "A1", neg_well = "A2",
                   width = 240, units = "mm")
 
   flu_norm_pr_data <- od_norm_pr_data
-  if(!is.na(flu_names)){
+  if(all(!is.na(flu_names))){
     if(length(flu_names) >= 1){
       for (flu_idx in seq_len(length(flu_names))) {
         flu_norm_pr_data <- flu_norm(flu_norm_pr_data, neg_well, blank_well,
