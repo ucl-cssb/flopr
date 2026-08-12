@@ -370,7 +370,7 @@ calibrate_flu <- function(pr_data, flu_name, flu_gain, od_name, conversion_facto
     # Fit cf to Gain relation to get cf for specific gain ---------------------
     model <- stats::lm(log10(cf) ~ poly(gain, 2), data = flu_cfs)
     this_cf <- 10 ^ stats::predict(model, data.frame(gain = flu_gain))
-    ggplot2::ggplot() +
+    plt <- ggplot2::ggplot() +
       ggplot2::geom_line(ggplot2::aes(x = flu_cfs$gain,
                                       y = 10^stats::predict(model, flu_cfs))) +
       ggplot2::geom_point(ggplot2::aes(x = flu_cfs$gain,
@@ -385,6 +385,10 @@ calibrate_flu <- function(pr_data, flu_name, flu_gain, od_name, conversion_facto
       ggplot2::scale_y_continuous("Conversion factor (MEFL/a.u.)",
                                   trans = "log10") +
       ggplot2::theme_bw()
+    ggplot2::ggsave(filename = gsub(".csv",
+                                    paste("_interp-curve_", flu_name, "_", flu_gain, ".pdf", sep = ""),
+                                    conversion_factors_csv),
+                    plot = plt)
   }
 
   pr_data[,paste("calibrated_", flu_name, sep="")] <-
