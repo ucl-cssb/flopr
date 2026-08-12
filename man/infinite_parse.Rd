@@ -4,15 +4,17 @@
 \alias{infinite_parse}
 \title{Parser for Tecan Infinite plate reader data}
 \usage{
-infinite_parse(data_csv, layout_csv, timeseries = T)
+infinite_parse(data_file, layout_csv, timeseries = T, data_csv)
 }
 \arguments{
-\item{data_csv}{path to .csv, .xls or .xlsx file from Tecan Infinit plate reader}
+\item{data_file}{path to .csv, .xls or .xlsx file from Tecan Infinit plate reader}
 
 \item{layout_csv}{path to csv file containing plate layout information}
 
 \item{timeseries}{Boolean flag indicating whether the data is a timeseries or
 single recording. The Tecan software outputs the two scenarios differently.}
+
+\item{data_csv}{deprecated; use \code{data_file} instead.}
 }
 \value{
 a data.frame containing the parsed plate reader data
@@ -22,7 +24,7 @@ Parser for Tecan Infinite plate reader data
 }
 \examples{
 \dontrun{
-infinite_parse(data_csv = "examples/plate_reader/tecan_infinite/calibration_data.csv",
+infinite_parse(data_file = "examples/plate_reader/tecan_infinite/calibration_data.csv",
                 layout_csv = "examples/plate_reader/tecan_infinite/calibration_plate_layout.csv",
                 timeseries = TRUE)
 }

@@ -4,15 +4,17 @@
 \alias{cytation_parse}
 \title{Parser for Biotek Cytation plate reader data}
 \usage{
-cytation_parse(data_csv, layout_csv, timeseries = T)
+cytation_parse(data_file, layout_csv, timeseries = T, data_csv)
 }
 \arguments{
-\item{data_csv}{path to a .csv, .xls or .xlsx file from Biotek Cytation plate reader}
+\item{data_file}{path to a .csv, .xls or .xlsx file from Biotek Cytation plate reader}
 
 \item{layout_csv}{path to csv file containing plate layout information}
 
 \item{timeseries}{Boolean flag indicating whether the data is a timeseries or
 single recording.}
+
+\item{data_csv}{deprecated; use \code{data_file} instead.}
 }
 \value{
 a data.frame containing the parsed plate reader data
@@ -22,7 +24,7 @@ Parser for Biotek Cytation plate reader data
 }
 \examples{
 \dontrun{
-cytation_parse(data_csv = "examples/plate_reader/biotek_cytation/231031_pr_calibration_lid.xlsx",
+cytation_parse(data_file = "examples/plate_reader/biotek_cytation/231031_pr_calibration_lid.xlsx",
                 layout_csv = "examples/plate_reader/biotek_cytation/plate_layout.csv",
                 timeseries = FALSE)
 }

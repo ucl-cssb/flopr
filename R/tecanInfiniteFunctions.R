@@ -1,9 +1,10 @@
 #' Parser for Tecan Infinite plate reader data
 #'
-#' @param data_csv path to .csv, .xls or .xlsx file from Tecan Infinit plate reader
+#' @param data_file path to .csv, .xls or .xlsx file from Tecan Infinit plate reader
 #' @param layout_csv path to csv file containing plate layout information
 #' @param timeseries Boolean flag indicating whether the data is a timeseries or
 #' single recording. The Tecan software outputs the two scenarios differently.
+#' @param data_csv deprecated; use \code{data_file} instead.
 #'
 #' @return a data.frame containing the parsed plate reader data
 #' @export
@@ -11,11 +12,17 @@
 #'
 #' @examples
 #' \dontrun{
-#' infinite_parse(data_csv = "examples/plate_reader/tecan_infinite/calibration_data.csv",
+#' infinite_parse(data_file = "examples/plate_reader/tecan_infinite/calibration_data.csv",
 #'                 layout_csv = "examples/plate_reader/tecan_infinite/calibration_plate_layout.csv",
 #'                 timeseries = TRUE)
 #' }
-infinite_parse <- function(data_csv, layout_csv, timeseries=T) {
+infinite_parse <- function(data_file, layout_csv, timeseries=T, data_csv) {
+  if (!missing(data_csv)) {
+    warning("The 'data_csv' argument of infinite_parse() is deprecated; ",
+            "use 'data_file' instead.", call. = FALSE)
+    data_file <- data_csv
+  }
+  data_csv <- data_file
 
   if(stringr::str_ends(data_csv, ".xlsx") | stringr::str_ends(data_csv, ".xls")){
     data <- as.data.frame(readxl::read_excel(path = data_csv,
@@ -27,7 +34,7 @@ infinite_parse <- function(data_csv, layout_csv, timeseries=T) {
                               header = F,
                               stringsAsFactors = F)
   } else {
-    stop("data_csv is must be a .csv, .xls or .xlsx file.")
+    stop("data_file is must be a .csv, .xls or .xlsx file.")
   }
 
   plate_layout <- utils::read.csv(layout_csv)

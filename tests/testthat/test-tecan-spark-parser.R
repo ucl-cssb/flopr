@@ -2,7 +2,7 @@ test_that("spark_parse() parses timeseries=FALSE calibration data", {
   dir <- local_fixture_copy("tecan_spark")
 
   out <- spark_parse(
-    data_csv = file.path(dir, "191219_calibration_membrane.csv"),
+    data_file = file.path(dir, "191219_calibration_membrane.csv"),
     layout_csv = file.path(dir, "calibration_plate_layout.csv"),
     timeseries = FALSE
   )
@@ -16,7 +16,7 @@ test_that("spark_parse() parses timeseries=TRUE sample data", {
   dir <- local_fixture_copy("tecan_spark")
 
   out <- spark_parse(
-    data_csv = file.path(dir, "200228_example_data.csv"),
+    data_file = file.path(dir, "200228_example_data.csv"),
     layout_csv = file.path(dir, "200228_example_layout.csv"),
     timeseries = TRUE
   )
@@ -31,7 +31,7 @@ test_that("spark_parse() input file is never overwritten (backlog 002)", {
   input_before <- readLines(file.path(dir, "200228_example_data.csv"))
 
   spark_parse(
-    data_csv = file.path(dir, "200228_example_data.csv"),
+    data_file = file.path(dir, "200228_example_data.csv"),
     layout_csv = file.path(dir, "200228_example_layout.csv"),
     timeseries = TRUE
   )
@@ -53,10 +53,26 @@ test_that("spark_parse() errors clearly on a file with only one measurement bloc
 
   expect_error(
     spark_parse(
-      data_csv = single_block_path,
+      data_file = single_block_path,
       layout_csv = file.path(dir, "200228_example_layout.csv"),
       timeseries = FALSE
     ),
     "No measurement blocks found"
   )
+})
+
+test_that("spark_parse()'s deprecated data_csv argument still works (backlog 048)", {
+  dir <- local_fixture_copy("tecan_spark")
+
+  expect_warning(
+    out <- spark_parse(
+      data_csv = file.path(dir, "191219_calibration_membrane.csv"),
+      layout_csv = file.path(dir, "calibration_plate_layout.csv"),
+      timeseries = FALSE
+    ),
+    "deprecated"
+  )
+
+  expect_true(file.exists(file.path(dir, "191219_calibration_membrane_parsed.csv")))
+  expect_true(all(c("well", "row", "column", "calibrant", "fluorophore") %in% names(out)))
 })

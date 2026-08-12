@@ -4,10 +4,16 @@
 \alias{spark_parse}
 \title{Parser for Tecan Spark plate reader data}
 \usage{
-spark_parse(data_csv, layout_csv, timeseries = T, wells_as_columns = F)
+spark_parse(
+  data_file,
+  layout_csv,
+  timeseries = T,
+  wells_as_columns = F,
+  data_csv
+)
 }
 \arguments{
-\item{data_csv}{path to .csv, .xls or .xlsx file from Tecan Spark plate reader}
+\item{data_file}{path to .csv, .xls or .xlsx file from Tecan Spark plate reader}
 
 \item{layout_csv}{path to csv file containing plate layout information}
 
@@ -16,6 +22,8 @@ single recording. The Tecan software outputs the two scenarios differently.}
 
 \item{wells_as_columns}{Boolean flag indicating whether blocks of data are
 oriented with wells as columns or rows}
+
+\item{data_csv}{deprecated; use \code{data_file} instead.}
 }
 \value{
 a data.frame containing the parsed plate reader data
@@ -25,7 +33,7 @@ Parser for Tecan Spark plate reader data
 }
 \examples{
 \dontrun{
-spark_parse(data_csv = "examples/plate_reader/tecan_spark/191219_calibration_membrane.csv",
+spark_parse(data_file = "examples/plate_reader/tecan_spark/191219_calibration_membrane.csv",
             layout_csv = "examples/plate_reader/tecan_spark/calibration_plate_layout.csv",
             timeseries = FALSE)
 }

@@ -132,12 +132,12 @@ Once we have the calibration data and layout .csv files we can parse the
 data.
 
 ``` r
-flopr::spark_parse(data_csv = "examples/plate_reader/tecan_spark/191219_calibration_membrane.csv",
+flopr::spark_parse(data_file = "examples/plate_reader/tecan_spark/191219_calibration_membrane.csv",
                    layout_csv = "examples/plate_reader/tecan_spark/calibration_plate_layout.csv",
                    timeseries = FALSE)
 ```
 
-The `data_csv` argument takes the path to the calibration data.
+The `data_file` argument takes the path to the calibration data.
 `layout_csv` is the path to the plate layout .csv file. Finally, the
 Tecan plate readers save timeseries data differently from single
 timepoint data, so we have a Boolean flag, `timeseries`, that lets the
@@ -236,7 +236,7 @@ inducers, etc.:
 Now we can use our parsing function.
 
 ``` r
-flopr::spark_parse(data_csv = "examples/plate_reader/tecan_spark/200228_example_data.csv",
+flopr::spark_parse(data_file = "examples/plate_reader/tecan_spark/200228_example_data.csv",
                    layout_csv = "examples/plate_reader/tecan_spark/200228_example_layout.csv",
                    timeseries = TRUE)
 ```
@@ -370,7 +370,7 @@ For a Biotek Cytation, `cytation_parse()` reads either the raw
 same kind of plate layout `.csv` used above:
 
 ``` r
-flopr::cytation_parse(data_csv = "examples/plate_reader/biotek_cytation/231031_pr_calibration_membrane.xlsx",
+flopr::cytation_parse(data_file = "examples/plate_reader/biotek_cytation/231031_pr_calibration_membrane.xlsx",
                       layout_csv = "examples/plate_reader/biotek_cytation/plate_layout.csv",
                       timeseries = FALSE)
 ```
@@ -389,7 +389,7 @@ For a Tecan Infinite, `infinite_parse()` follows the same pattern as
 single-timepoint from timeseries exports):
 
 ``` r
-flopr::infinite_parse(data_csv = "examples/plate_reader/tecan_infinite/calibration_data.csv",
+flopr::infinite_parse(data_file = "examples/plate_reader/tecan_infinite/calibration_data.csv",
                       layout_csv = "examples/plate_reader/tecan_infinite/calibration_plate_layout.csv",
                       timeseries = TRUE)
 ```

@@ -1,11 +1,12 @@
 #' Parser for Tecan Spark plate reader data
 #'
-#' @param data_csv path to .csv, .xls or .xlsx file from Tecan Spark plate reader
+#' @param data_file path to .csv, .xls or .xlsx file from Tecan Spark plate reader
 #' @param layout_csv path to csv file containing plate layout information
 #' @param timeseries Boolean flag indicating whether the data is a timeseries or
 #' single recording. The Tecan software outputs the two scenarios differently.
 #' @param wells_as_columns Boolean flag indicating whether blocks of data are
 #' oriented with wells as columns or rows
+#' @param data_csv deprecated; use \code{data_file} instead.
 #'
 #' @return a data.frame containing the parsed plate reader data
 #' @export
@@ -13,11 +14,17 @@
 #'
 #' @examples
 #' \dontrun{
-#' spark_parse(data_csv = "examples/plate_reader/tecan_spark/191219_calibration_membrane.csv",
+#' spark_parse(data_file = "examples/plate_reader/tecan_spark/191219_calibration_membrane.csv",
 #'             layout_csv = "examples/plate_reader/tecan_spark/calibration_plate_layout.csv",
 #'             timeseries = FALSE)
 #' }
-spark_parse <- function(data_csv, layout_csv, timeseries=T, wells_as_columns=F) {
+spark_parse <- function(data_file, layout_csv, timeseries=T, wells_as_columns=F, data_csv) {
+  if (!missing(data_csv)) {
+    warning("The 'data_csv' argument of spark_parse() is deprecated; ",
+            "use 'data_file' instead.", call. = FALSE)
+    data_file <- data_csv
+  }
+  data_csv <- data_file
 
   if(stringr::str_ends(data_csv, ".xlsx") | stringr::str_ends(data_csv, ".xls")){
     data <- as.data.frame(readxl::read_excel(path = data_csv,
@@ -29,7 +36,7 @@ spark_parse <- function(data_csv, layout_csv, timeseries=T, wells_as_columns=F) 
                               header = F,
                               stringsAsFactors = F)
   } else {
-    stop("data_csv is must be a .csv, .xls or .xlsx file.")
+    stop("data_file is must be a .csv, .xls or .xlsx file.")
   }
 
   plate_layout <- utils::read.csv(layout_csv)

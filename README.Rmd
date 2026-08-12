@@ -71,12 +71,12 @@ head(read.csv("examples/plate_reader/tecan_spark/calibration_plate_layout.csv"))
 Once we have the calibration data and layout .csv files we can parse the data.
 
 ```{r eval=FALSE}
-flopr::spark_parse(data_csv = "examples/plate_reader/tecan_spark/191219_calibration_membrane.csv",
+flopr::spark_parse(data_file = "examples/plate_reader/tecan_spark/191219_calibration_membrane.csv",
                    layout_csv = "examples/plate_reader/tecan_spark/calibration_plate_layout.csv",
                    timeseries = FALSE)
 ```
 
-The `data_csv` argument takes the path to the calibration data. `layout_csv` is the path to the plate layout .csv file. Finally, the Tecan plate readers save timeseries data differently from single timepoint data, so we have a Boolean flag, `timeseries`, that lets the parser know that this is not a timeseries.
+The `data_file` argument takes the path to the calibration data. `layout_csv` is the path to the plate layout .csv file. Finally, the Tecan plate readers save timeseries data differently from single timepoint data, so we have a Boolean flag, `timeseries`, that lets the parser know that this is not a timeseries.
 
 The `spark_parse()` function saves the parsed calibration data in a new .csv file, in the same location as the calibration data, with "_parsed" appended to the filename. The first few rows look like this:
 
@@ -116,7 +116,7 @@ head(read.csv("examples/plate_reader/tecan_spark/200228_example_layout.csv", che
 Now we can use our parsing function.
 
 ```{r eval=FALSE}
-flopr::spark_parse(data_csv = "examples/plate_reader/tecan_spark/200228_example_data.csv",
+flopr::spark_parse(data_file = "examples/plate_reader/tecan_spark/200228_example_data.csv",
                    layout_csv = "examples/plate_reader/tecan_spark/200228_example_layout.csv",
                    timeseries = TRUE)
 ```
@@ -173,7 +173,7 @@ The walkthrough above uses a Tecan Spark, but flopR also parses data from a Biot
 For a Biotek Cytation, `cytation_parse()` reads either the raw `.xlsx`/`.xls` export or a `.csv` you've saved from it, alongside the same kind of plate layout `.csv` used above:
 
 ```{r eval=FALSE}
-flopr::cytation_parse(data_csv = "examples/plate_reader/biotek_cytation/231031_pr_calibration_membrane.xlsx",
+flopr::cytation_parse(data_file = "examples/plate_reader/biotek_cytation/231031_pr_calibration_membrane.xlsx",
                       layout_csv = "examples/plate_reader/biotek_cytation/plate_layout.csv",
                       timeseries = FALSE)
 ```
@@ -189,7 +189,7 @@ flopr::biotek_parse(data_xl = "examples/plate_reader/biotek_neo2/biotek-neo2_exa
 For a Tecan Infinite, `infinite_parse()` follows the same pattern as `spark_parse()` above (a `timeseries` flag distinguishing single-timepoint from timeseries exports):
 
 ```{r eval=FALSE}
-flopr::infinite_parse(data_csv = "examples/plate_reader/tecan_infinite/calibration_data.csv",
+flopr::infinite_parse(data_file = "examples/plate_reader/tecan_infinite/calibration_data.csv",
                       layout_csv = "examples/plate_reader/tecan_infinite/calibration_plate_layout.csv",
                       timeseries = TRUE)
 ```

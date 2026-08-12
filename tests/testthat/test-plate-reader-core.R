@@ -1,7 +1,7 @@
 test_that("generate_cfs() produces conversion factors from Tecan Spark calibration data", {
   dir <- local_fixture_copy("tecan_spark")
   spark_parse(
-    data_csv = file.path(dir, "191219_calibration_membrane.csv"),
+    data_file = file.path(dir, "191219_calibration_membrane.csv"),
     layout_csv = file.path(dir, "calibration_plate_layout.csv"),
     timeseries = FALSE
   )
@@ -17,13 +17,13 @@ test_that("process_plate() handles multi-fluorophore + to_MEFL=TRUE (backlog 004
   dir <- local_fixture_copy("tecan_spark")
 
   spark_parse(
-    data_csv = file.path(dir, "191219_calibration_membrane.csv"),
+    data_file = file.path(dir, "191219_calibration_membrane.csv"),
     layout_csv = file.path(dir, "calibration_plate_layout.csv"),
     timeseries = FALSE
   )
   generate_cfs(file.path(dir, "191219_calibration_membrane_parsed.csv"))
   spark_parse(
-    data_csv = file.path(dir, "200228_example_data.csv"),
+    data_file = file.path(dir, "200228_example_data.csv"),
     layout_csv = file.path(dir, "200228_example_layout.csv"),
     timeseries = TRUE
   )
@@ -50,7 +50,7 @@ test_that("process_plate() handles multi-fluorophore + to_MEFL=TRUE (backlog 004
 test_that("calibrate_flu() uses an exact gain match when available (needs-discussion/001)", {
   dir <- local_fixture_copy("tecan_spark")
   spark_parse(
-    data_csv = file.path(dir, "191219_calibration_membrane.csv"),
+    data_file = file.path(dir, "191219_calibration_membrane.csv"),
     layout_csv = file.path(dir, "calibration_plate_layout.csv"),
     timeseries = FALSE
   )
