@@ -529,7 +529,7 @@ get_calibration <-
 
       ## flowCal model: log(calibrated + mef_auto) = m * log(measured) + b
       model <- NA
-      while(is.na(model)){
+      while(anyNA(model)){
         try(model <-
               stats::nls(log(calibrated) ~ log(exp(b) * measured ^ m - mef_auto),
                          data = valid_peaks,
