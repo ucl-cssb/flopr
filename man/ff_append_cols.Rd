@@ -7,13 +7,13 @@
 ff_append_cols(fr, cols)
 }
 \arguments{
-\item{fr}{A \code{\link[flowCore:flowFrame-class]{flowFrame}}.}
+\item{fr}{A \code{flowFrame} (see \pkg{flowCore}).}
 
 \item{cols}{A numeric matrix containing the new data columns to be added.
 Must has column names to be used as new channel names.}
 }
 \value{
-A \code{\linkS4class{flowFrame}}
+A \code{flowFrame} (see \pkg{flowCore})
 }
 \description{
 Append data columns to a flowFrame

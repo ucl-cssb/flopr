@@ -9,7 +9,7 @@
 #' keywords and parameters properly to ensure the new flowFrame can be written
 #' as a valid FCS through the function \code{write.FCS} .
 #'
-#' @param fr A \code{\link[flowCore:flowFrame-class]{flowFrame}}.
+#' @param fr A \code{flowFrame} (see \pkg{flowCore}).
 #' @param cols A numeric matrix containing the new data columns to be added.
 #' Must has column names to be used as new channel names.
 #'
@@ -19,7 +19,7 @@
 #' ff_append_cols(fr, cols)
 #' @return
 #'
-#' A \code{\linkS4class{flowFrame}}
+#' A \code{flowFrame} (see \pkg{flowCore})
 #' @author Mike Jiang
 #' @keywords IO
 ff_append_cols <- function(fr, cols){
@@ -45,7 +45,7 @@ update_kw_from_pd <- function(fr, new_pd)
   fr
 }
 #' generate new pData of flowFrame based on the new cols added
-#' @param fr A \code{\link[flowCore:flowFrame-class]{flowFrame}}.
+#' @param fr A \code{flowFrame} (see \pkg{flowCore}).
 #' @param cols A numeric matrix containing the new data columns to be added.
 #' Must has column names to be used as new channel names.
 #' @noRd
