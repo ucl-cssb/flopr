@@ -11,6 +11,12 @@
 #' @export
 #' @importFrom rlang .data
 #'
+#' @examples
+#' \dontrun{
+#' spark_parse(data_csv = "examples/plate_reader/tecan_spark/191219_calibration_membrane.csv",
+#'             layout_csv = "examples/plate_reader/tecan_spark/calibration_plate_layout.csv",
+#'             timeseries = FALSE)
+#' }
 spark_parse <- function(data_csv, layout_csv, timeseries=F, wells_as_columns=F) {
 
   if(stringr::str_ends(data_csv, ".xlsx") | stringr::str_ends(data_csv, ".xls")){
@@ -161,6 +167,11 @@ spark_parse <- function(data_csv, layout_csv, timeseries=F, wells_as_columns=F) 
 #' @return a data.frame containing the parsed plate reader data
 #' @export
 #'
+#' @examples
+#' \dontrun{
+#' sparkParse(data_csv = "examples/plate_reader/tecan_spark/191219_calibration_membrane.csv",
+#'            layout_csv = "examples/plate_reader/tecan_spark/calibration_plate_layout.csv")
+#' }
 sparkParse <- function(data_csv, layout_csv) {
   return(spark_parse(data_csv, layout_csv))
 }

@@ -14,6 +14,14 @@
 #' \code{do_plot = TRUE}.
 #'
 #' @export
+#'
+#' @examples
+#' \dontrun{
+#' process_fcs(fcs_file = "examples/flow_cytometry/DATA/20191121/pWeak_None_0_1.fcs",
+#'             flu_channels = "BL1-H",
+#'             pre_cleaned = TRUE,
+#'             do_plot = TRUE)
+#' }
 process_fcs <-
   function(fcs_file,
            flu_channels = c("BL1-H"),
@@ -96,6 +104,20 @@ process_fcs <-
 #' @return nothing is returned. A new folder is created with the processed .fcs
 #' files and plot if \code{do_plot = TRUE}.
 #' @export
+#'
+#' @examples
+#' \dontrun{
+#' process_fcs_dir(dir_path = "examples/flow_cytometry/DATA/20191121",
+#'                  pattern = "*Med*.fcs",
+#'                  flu_channels = "BL1-H",
+#'                  pre_cleaned = TRUE,
+#'                  do_plot = TRUE,
+#'                  neg_fcs = "pNeg_None_0_1.fcs",
+#'                  calibrate = TRUE,
+#'                  mef_peaks = list(list(channel = "BL1-H",
+#'                                        peaks = c(0, 822, 2114, 5911, 17013,
+#'                                                  41837, 145365, 287558))))
+#' }
 process_fcs_dir <-
   function(dir_path,
            pattern = "*.fcs",

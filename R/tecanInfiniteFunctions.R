@@ -9,6 +9,12 @@
 #' @export
 #' @importFrom rlang .data
 #'
+#' @examples
+#' \dontrun{
+#' infinite_parse(data_csv = "examples/plate_reader/tecan_infinite/calibration_data.csv",
+#'                 layout_csv = "examples/plate_reader/tecan_infinite/calibration_plate_layout.csv",
+#'                 timeseries = TRUE)
+#' }
 infinite_parse <- function(data_csv, layout_csv, timeseries=F) {
 
   if(stringr::str_ends(data_csv, ".xlsx") | stringr::str_ends(data_csv, ".xls")){

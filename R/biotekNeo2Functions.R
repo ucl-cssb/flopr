@@ -10,6 +10,12 @@
 #' @importFrom rlang .data
 #' @importFrom dplyr %>%
 #'
+#' @examples
+#' \dontrun{
+#' biotek_parse(data_xl = "examples/plate_reader/biotek_neo2/biotek-neo2_example_data.xlsx",
+#'              layout_csv = "examples/plate_reader/biotek_neo2/layout.csv",
+#'              timeseries = TRUE)
+#' }
 biotek_parse <- function(data_xl, layout_csv, timeseries=T) {
   data <- readxl::read_excel(path = data_xl,
                              col_names = F,

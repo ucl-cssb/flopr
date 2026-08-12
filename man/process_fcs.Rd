@@ -25,3 +25,11 @@ nothing is returned. A processed .fcs file is produced and a plot if
 \code{process_fcs} uses mixture models to cluster bacteria from background
 debris and fits a linear model to SSC-H vs SSC-A to remove doublets.
 }
+\examples{
+\dontrun{
+process_fcs(fcs_file = "examples/flow_cytometry/DATA/20191121/pWeak_None_0_1.fcs",
+            flu_channels = "BL1-H",
+            pre_cleaned = TRUE,
+            do_plot = TRUE)
+}
+}

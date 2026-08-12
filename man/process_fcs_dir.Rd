@@ -62,3 +62,17 @@ files and plot if \code{do_plot = TRUE}.
 \code{process_fcs_dir} uses mixture models to cluster bacteria from
 background debris and fits a linear model to SSC-H vs SSC-A to remove doublets.
 }
+\examples{
+\dontrun{
+process_fcs_dir(dir_path = "examples/flow_cytometry/DATA/20191121",
+                 pattern = "*Med*.fcs",
+                 flu_channels = "BL1-H",
+                 pre_cleaned = TRUE,
+                 do_plot = TRUE,
+                 neg_fcs = "pNeg_None_0_1.fcs",
+                 calibrate = TRUE,
+                 mef_peaks = list(list(channel = "BL1-H",
+                                       peaks = c(0, 822, 2114, 5911, 17013,
+                                                 41837, 145365, 287558))))
+}
+}

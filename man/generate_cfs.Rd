@@ -9,6 +9,15 @@ generate_cfs(calibration_csv)
 \arguments{
 \item{calibration_csv}{path of a .csv file of your calibration data}
 }
+\value{
+Saves a CSV file with columns: cf (conversion factor), beta (pipetting error parameter), calibrant, fluorophore, and measure. Each row corresponds to a fitted conversion factor for a calibrant/fluorophore/measure combination.
+}
 \description{
 Generate Conversion Factors
+}
+\examples{
+\dontrun{
+generate_cfs(calibration_csv =
+  "examples/plate_reader/tecan_spark/191219_calibration_membrane_parsed.csv")
+}
 }

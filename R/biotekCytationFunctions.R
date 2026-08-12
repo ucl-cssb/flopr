@@ -10,6 +10,12 @@
 #' @importFrom rlang .data
 #' @importFrom dplyr %>%
 #'
+#' @examples
+#' \dontrun{
+#' cytation_parse(data_csv = "examples/plate_reader/biotek_cytation/231031_pr_calibration_lid.xlsx",
+#'                 layout_csv = "examples/plate_reader/biotek_cytation/plate_layout.csv",
+#'                 timeseries = FALSE)
+#' }
 cytation_parse <- function(data_csv, layout_csv, timeseries=T) {
   if(stringr::str_ends(data_csv, ".xlsx") | stringr::str_ends(data_csv, ".xls")){
     data <- as.data.frame(readxl::read_excel(path = data_csv,

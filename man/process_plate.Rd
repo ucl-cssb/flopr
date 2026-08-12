@@ -47,3 +47,17 @@ and, if to_MEFL = T, calibrated OD and GFP data
 \description{
 Plate reader normalisation and calibration
 }
+\examples{
+\dontrun{
+process_plate(data_csv = "examples/plate_reader/tecan_spark/200228_example_data_parsed.csv",
+              blank_well = c("C12", "D12"),
+              neg_well = c("C6", "D6", "E6"),
+              od_name = "OD700",
+              flu_names = c("GFP", "mCherry"),
+              af_model = "spline",
+              to_MEFL = TRUE,
+              flu_gains = 135,
+              conversion_factors_csv =
+                "examples/plate_reader/tecan_spark/191219_calibration_membrane_parsed_cfs.csv")
+}
+}

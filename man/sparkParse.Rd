@@ -17,3 +17,9 @@ a data.frame containing the parsed plate reader data
 \description{
 Parser for Tecan Spark plate reader data
 }
+\examples{
+\dontrun{
+sparkParse(data_csv = "examples/plate_reader/tecan_spark/191219_calibration_membrane.csv",
+           layout_csv = "examples/plate_reader/tecan_spark/calibration_plate_layout.csv")
+}
+}

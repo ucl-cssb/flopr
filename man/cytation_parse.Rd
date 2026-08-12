@@ -20,3 +20,10 @@ a data.frame containing the parsed plate reader data
 \description{
 Parser for Biotek Cytation plate reader data
 }
+\examples{
+\dontrun{
+cytation_parse(data_csv = "examples/plate_reader/biotek_cytation/231031_pr_calibration_lid.xlsx",
+                layout_csv = "examples/plate_reader/biotek_cytation/plate_layout.csv",
+                timeseries = FALSE)
+}
+}

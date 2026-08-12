@@ -21,6 +21,18 @@
 #' @importFrom rlang .data
 #'
 #' @examples
+#' \dontrun{
+#' process_plate(data_csv = "examples/plate_reader/tecan_spark/200228_example_data_parsed.csv",
+#'               blank_well = c("C12", "D12"),
+#'               neg_well = c("C6", "D6", "E6"),
+#'               od_name = "OD700",
+#'               flu_names = c("GFP", "mCherry"),
+#'               af_model = "spline",
+#'               to_MEFL = TRUE,
+#'               flu_gains = 135,
+#'               conversion_factors_csv =
+#'                 "examples/plate_reader/tecan_spark/191219_calibration_membrane_parsed_cfs.csv")
+#' }
 process_plate <- function(data_csv, blank_well = "A1", neg_well = "A2",
                           od_name = "OD", flu_names = c("GFP"),
                           af_model = "spline", to_MEFL = F,
@@ -382,6 +394,12 @@ calibrate_flu <- function(pr_data, flu_name, flu_gain, od_name, conversion_facto
 #' @export
 #' @importFrom dplyr %>%
 #' @importFrom rlang .data :=
+#'
+#' @examples
+#' \dontrun{
+#' generate_cfs(calibration_csv =
+#'   "examples/plate_reader/tecan_spark/191219_calibration_membrane_parsed.csv")
+#' }
 generate_cfs <- function(calibration_csv) {
   calibration_data <- utils::read.csv(calibration_csv, header = T, check.names = F)
   fit_values <- c()

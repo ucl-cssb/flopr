@@ -20,3 +20,10 @@ a data.frame containing the parsed plate reader data
 \description{
 Parser for Tecan Infinite plate reader data
 }
+\examples{
+\dontrun{
+infinite_parse(data_csv = "examples/plate_reader/tecan_infinite/calibration_data.csv",
+                layout_csv = "examples/plate_reader/tecan_infinite/calibration_plate_layout.csv",
+                timeseries = TRUE)
+}
+}

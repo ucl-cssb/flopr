@@ -20,3 +20,10 @@ a data.frame containing the parsed plate reader data
 \description{
 Parser for Biotek Neo 2 plate reader data
 }
+\examples{
+\dontrun{
+biotek_parse(data_xl = "examples/plate_reader/biotek_neo2/biotek-neo2_example_data.xlsx",
+             layout_csv = "examples/plate_reader/biotek_neo2/layout.csv",
+             timeseries = TRUE)
+}
+}
