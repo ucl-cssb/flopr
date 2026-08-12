@@ -1,97 +1,3 @@
-#' Find next line containing a given string
-#'
-#' @param start_idx Row index at which to start search
-#' @param string String containing a regular expression to search for. Empty cell might be stored as NA in the dataframe
-#' @param data dataframe to search within
-#' @param col Optional column to search within, searches whole row by default
-#'
-#' @return row index
-next_char_row <- function(start_idx, string=NA, data, col=NA) {
-  if (is.na(col)) {
-    col <- seq_len(ncol(data))
-  }
-  for (i in start_idx:nrow(data)) {
-    if (is.na(string)) {
-      if(all(is.na(data[i, col]))) {
-        return(i)
-      }
-    } else {
-      if (any(grepl(string, data[i, col], fixed = TRUE))) {
-        return(i)
-      }
-    }
-  }
-  return(NA)
-}
-
-#' Find next blank line
-#'
-#' @param start_idx
-#' @param data
-#'
-#' @return row index of next blank line
-next_blank_row <- function(start_idx, data){
-  next_start_idx <- start_idx
-  while (any(!is.na(data[next_start_idx, ]))) {
-    next_start_idx <- next_start_idx + 1
-    if(next_start_idx >= nrow(data)){
-      return(NA)
-    }
-  }
-  return(next_start_idx)
-}
-
-#' Find next blank line
-#'
-#' @param start_idx
-#' @param data
-#'
-#' @return row index of next blank line
-next_blank_cell <- function(start_idx, data, col){
-  next_start_idx <- start_idx
-  while (!is.na(data[next_start_idx, col])) {
-    next_start_idx <- next_start_idx + 1
-    if(next_start_idx >= nrow(data)){
-      return(NA)
-    }
-  }
-  return(next_start_idx)
-}
-
-#' Find next non-blank line
-#'
-#' @param start_idx
-#' @param data
-#'
-#' @return row index of next non-blank line
-next_filled_row <- function(start_idx, data){
-  next_start_idx <- start_idx
-  while (any(is.na(data[next_start_idx, ]))) {
-    next_start_idx <- next_start_idx + 1
-    if(next_start_idx >= nrow(data)){
-      return(NA)
-    }
-  }
-  return(next_start_idx)
-}
-
-#' Find next non-blank line
-#'
-#' @param start_idx
-#' @param data
-#'
-#' @return row index of next non-blank line
-next_filled_cell <- function(start_idx, data, col){
-  next_start_idx <- start_idx
-  while (is.na(data[next_start_idx, col])) {
-    next_start_idx <- next_start_idx + 1
-    if(next_start_idx >= nrow(data)){
-      return(NA)
-    }
-  }
-  return(next_start_idx)
-}
-
 #' Parser for Tecan Spark plate reader data
 #'
 #' @param data_csv path to .csv, .xls or .xlsx file from Tecan Spark plate reader
@@ -184,22 +90,19 @@ spark_parse <- function(data_csv, layout_csv, timeseries=F, wells_as_columns=F) 
       all_data <- rbind(all_data, joined_block)
 
       #
-      next_block_start_idx <- next_filled(block_end_idx + 1, data)
+      next_block_start_idx <- next_filled_cell(block_end_idx + 1, data, col=1)
     }
 
     # rearrange data ----------------------------------------------------------
     out_data <- all_data %>%
       tidyr::pivot_wider(names_from = .data$measure, values_from = .data$value) %>%  # reshape so we have a column for each measurement type
-      dplyr::mutate(row = substr(x = .data$well, start = 1, stop = 1)) %>%  # make a "row" column from the "well" column
-      dplyr::mutate(column = as.numeric(substr(x = .data$well, start = 2,  # and make a "column" column
-                                               stop = nchar(.data$well)))) %>%
+      add_row_column() %>%  # make "row" and "column" columns from the "well" column
       dplyr::arrange_at(dplyr::vars(.data$time,  # order the rows
                                     .data$row,
                                     .data$column))
 
     # write parsed data to csv ------------------------------------------------
-    out_name <- gsub(".csv", "_parsed.csv", data_csv)
-    out_name <- gsub(".xlsx", "_parsed.csv", out_name)
+    out_name <- parsed_out_name(data_csv)
     utils::write.csv(x = out_data, file = out_name, row.names = FALSE)
 
     return(out_data)
@@ -207,11 +110,11 @@ spark_parse <- function(data_csv, layout_csv, timeseries=F, wells_as_columns=F) 
   else if (timeseries == FALSE){
     # We use 'Name' in the first column to identify the start of a measurement block
     names_idx <- which(data[, 1] == "Name")
-    names_idx <- names_idx[2:length(names_idx)]  # remove the first start time entry which just details plate type
-
-    if (length(names_idx) == 0) {
+    if (length(names_idx) <= 1) {
+      # only the plate-type entry (or nothing) was found, no real measurement blocks
       stop("No measurement blocks found in the data.")
     }
+    names_idx <- names_idx[-1]  # remove the first start time entry which just details plate type
 
     all_data <- c()
     for (i in seq_len(length(names_idx))) {
@@ -238,20 +141,12 @@ spark_parse <- function(data_csv, layout_csv, timeseries=F, wells_as_columns=F) 
     # rearrange data ----------------------------------------------------------
     spread_data <- tidyr::pivot_wider(all_data, names_from = .data$measure,
                                       values_from = .data$value)
-    spread_data$row <- substr(x = spread_data$well, start = 1, stop = 1)
-    spread_data$column <- as.numeric(substr(x = spread_data$well, start = 2,
-                                            stop = nchar(spread_data$well)))
+    spread_data <- add_row_column(spread_data)
     spread_data <- dplyr::arrange_at(spread_data, dplyr::vars(.data$row,
                                                               .data$column))
 
     # write parsed data to csv ------------------------------------------------
-    if(stringr::str_ends(data_csv, ".xlsx")){
-      out_name <- gsub(".xlsx", "_parsed.csv", data_csv)
-    } else if(stringr::str_ends(data_csv, ".xls")){
-      out_name <- gsub(".xls", "_parsed.csv", data_csv)
-    } else if(stringr::str_ends(data_csv, ".csv")){
-      out_name <- gsub(".csv", "_parsed.csv", data_csv)
-    }
+    out_name <- parsed_out_name(data_csv)
     utils::write.csv(x = spread_data, file = out_name, row.names = FALSE)
 
     return(spread_data)
