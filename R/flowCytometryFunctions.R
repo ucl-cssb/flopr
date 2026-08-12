@@ -361,7 +361,7 @@ get_calibration <-
                       sep = "")
 
     ## default peak positions if none provided
-    if (is.na(mef_peaks)) {
+    if (anyNA(mef_peaks)) {
       mef_peaks <- list(list(
         channel = "BL1-H",
         peaks = c(0, 822, 2114, 5911, 17013, 41837, 145365, 287558)
@@ -449,7 +449,7 @@ get_calibration <-
         ggplot2::theme_bw(base_size = 8)
 
       # find peaks ------------------------------------------------------------
-      if (is.na(manual_peaks)) {
+      if (anyNA(manual_peaks)) {
         ## find peaks based on density estimate
         dens_d <-
           stats::density(log10(singlet_beads@exprs[, peak_channels[i]]),
@@ -476,7 +476,7 @@ get_calibration <-
             break
           }
         }
-        if (is.na(meas_peaks)) {
+        if (anyNA(meas_peaks)) {
           ## if we don't have calibration data, skip this channel
           next
         }
