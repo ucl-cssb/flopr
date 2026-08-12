@@ -5,7 +5,10 @@ Version: 0.4.03
 Authors@R: c(
   person("Fedorec", "Alex J H", email = "alexander.fedorec.13@ucl.ac.uk", role = c("aut", "cre")),
   person("Robinson", "Clare", role = c("aut")))
-Description: something
+Description: Provides tools to parse, normalise, and calibrate absorbance
+    and fluorescence data from plate reader and flow cytometry experiments,
+    converting raw instrument output into standardised units for comparison
+    across instruments and experiments.
 URL: https://github.com/ucl-cssb/flopr
 BugReports: https://github.com/ucl-cssb/flopr/issues
 License: GPL-3
