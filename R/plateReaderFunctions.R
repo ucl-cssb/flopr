@@ -121,6 +121,117 @@ od_norm <- function(pr_data, blank_well, od_name) {
 }
 
 
+#' Autofluorescence model definitions used by \code{flu_norm}
+#'
+#' Each entry provides a \code{fit} function (negative-control data -> a
+#' fitted model) and a \code{predict} function (model, newdata -> predicted
+#' fluorescence), so \code{flu_norm} only has one place that dispatches on
+#' \code{af_model} instead of three parallel chains.
+#' @noRd
+af_models <- list(
+  polynomial = list(
+    fit = function(data) {
+      stats::nls(v1 ~ (a * normalised_OD + b * normalised_OD ^ 2 + c),
+                start = c(a = 1, b = 1, c = 1), data = data)
+    },
+    predict = function(model, newdata) stats::predict(model, newdata)
+  ),
+  inverse_poly = list(
+    fit = function(data) {
+      stats::nls(normalised_OD ~ (a * v1 + b * v1 ^ 2 + c),
+                start = c(a = 1, b = 1, c = 1), data = data)
+    },
+    predict = function(model, newdata) {
+      ((- (stats::coef(model)[1]) +
+          sqrt((stats::coef(model)[1]) ^ 2 -
+                 4 * (stats::coef(model)[2]) * (stats::coef(model)[3]) +
+                 4 * (stats::coef(model)[2]) * newdata$normalised_OD)) /
+         (2 * (stats::coef(model)[2])))
+    }
+  ),
+  exponential = list(
+    ## ae^(bx) + c
+    fit = function(data) {
+      ## intial parameter estimation
+      model_0 <- stats::lm(log(v1) ~ normalised_OD, data = data)
+      start <- list(a = exp(stats::coef(model_0)[1]),
+                    b = stats::coef(model_0)[2],
+                    c = -1)
+      stats::nls(v1 ~ (a * exp(b * normalised_OD) + c),
+                start = start, data = data)
+    },
+    predict = function(model, newdata) stats::predict(model, newdata)
+  ),
+  bi_exponential = list(
+    ## a exp(bx) + c exp(dx) + e
+    fit = function(data) {
+      model_0 <- stats::lm(log(v1) ~ normalised_OD, data = data)
+      start <- list(a = exp(stats::coef(model_0)[1]*0.2),
+                    b = stats::coef(model_0)[2]*0.2,
+                    c = exp(stats::coef(model_0)[1])*0.8,
+                    d = stats::coef(model_0)[2]*0.8,
+                    e = 1)
+      stats::nls(v1 ~ (a * exp(b * normalised_OD) +
+                          c * exp(d * normalised_OD) + e),
+                start = start, data = data)
+    },
+    predict = function(model, newdata) stats::predict(model, newdata)
+  ),
+  linear_exponential = list(
+    ## ax + be^cx + d
+    fit = function(data) {
+      model_01 <- stats::lm(v1 ~ normalised_OD, data = data)
+      model_02 <- stats::lm(log(v1) ~ normalised_OD, data = data)
+      start <- list(a = stats::coef(model_01)[2],
+                    b = exp(stats::coef(model_02)[1]),
+                    c = stats::coef(model_02)[2],
+                    d = 1)
+      stats::nls(v1 ~ (a * normalised_OD +
+                          b * exp(c * normalised_OD) + d),
+                start = start, data = data)
+    },
+    predict = function(model, newdata) stats::predict(model, newdata)
+  ),
+  power = list(
+    ## ax^b + c
+    fit = function(data) {
+      model_0 <- stats::lm(log(v1) ~ log(normalised_OD), data = data)
+      start <- list(a = exp(stats::coef(model_0)[1]),
+                    b = stats::coef(model_0)[2],
+                    c = 1)
+      stats::nls(v1 ~ (a * normalised_OD ^ b + c),
+                start = start, data = data)
+    },
+    predict = function(model, newdata) stats::predict(model, newdata)
+  ),
+  linear_power = list(
+    ## ax + bx^c + d
+    fit = function(data) {
+      model_01 <- stats::lm(v1 ~ normalised_OD, data = data)
+      model_02 <- stats::lm(log(v1) ~ log(normalised_OD), data = data)
+      start <- list(a = stats::coef(model_01)[2],
+                    b = exp(stats::coef(model_02)[1]),
+                    c = stats::coef(model_02)[2],
+                    d = 1)
+      stats::nls(v1 ~ (a * normalised_OD + b * normalised_OD ^ c + d),
+                start = start, data = data)
+    },
+    predict = function(model, newdata) stats::predict(model, newdata)
+  ),
+  loess = list(
+    fit = function(data) {
+      stats::loess(v1 ~ normalised_OD, data = data, span = 0.5)
+    },
+    predict = function(model, newdata) stats::predict(model, newdata)
+  ),
+  spline = list(
+    fit = function(data) {
+      mgcv::gam(v1 ~ s(normalised_OD), data = data)
+    },
+    predict = function(model, newdata) mgcv::predict.gam(model, newdata)
+  )
+)
+
 #' Normalise fluorescence against negative well
 #'
 #' @param pr_data a long data.frame containing you plate reader data with OD
@@ -143,128 +254,23 @@ flu_norm <- function(pr_data, neg_well, blank_well, flu_name, af_model, data_csv
 
   negative_data <- pr_data %>% dplyr::filter(.data$well %in% neg_well)
 
-  if (af_model == "polynomial") {
-    model <- stats::nls(v1 ~ (a * normalised_OD + b * normalised_OD ^ 2 + c),
-                        start = c(a = 1, b = 1, c = 1), data = negative_data)
-
-  } else if (af_model == "inverse_poly") {
-    model <- stats::nls(normalised_OD ~ (a * v1 + b * v1 ^ 2 + c),
-                        start = c(a = 1, b = 1, c = 1), data = negative_data)
-
-  } else if (af_model == "exponential") {
-    ## ae^(bx) + c
-    ## intial parameter estimation
-    model_0 <- stats::lm(log(v1) ~ normalised_OD, data = negative_data)
-    start <- list(a = exp(stats::coef(model_0)[1]),
-                  b = stats::coef(model_0)[2],
-                  c = -1)
-
-    model <- stats::nls(v1 ~ (a * exp(b * normalised_OD) + c),
-                        start = start, data = negative_data)
-
-  } else if (af_model == "bi_exponential") {
-    ## a exp(bx) + c exp(dx) + e
-
-    model_0 <- stats::lm(log(v1) ~ normalised_OD, data = negative_data)
-    start <- list(a = exp(stats::coef(model_0)[1]*0.2),
-                  b = stats::coef(model_0)[2]*0.2,
-                  c = exp(stats::coef(model_0)[1])*0.8,
-                  d = stats::coef(model_0)[2]*0.8,
-                  e = 1)
-
-    model <- stats::nls(v1 ~ (a * exp(b * normalised_OD) +
-                                c * exp(d * normalised_OD) + e),
-                        start = start,
-                        data = negative_data)
-
-  } else if (af_model == "linear_exponential") {
-    ## ax + be^cx + d
-
-    model_01 <- stats::lm(v1 ~ normalised_OD, data = negative_data)
-    model_02 <- stats::lm(log(v1) ~ normalised_OD, data = negative_data)
-    start <- list(a = stats::coef(model_01)[2],
-                  b = exp(stats::coef(model_02)[1]),
-                  c = stats::coef(model_02)[2],
-                  d = 1)
-
-    model <- stats::nls(v1 ~ (a * normalised_OD +
-                                b * exp(c * normalised_OD) + d),
-                        start = start,
-                        data = negative_data)
-
-  } else if (af_model == "power") {
-    ## ax^b + c
-    model_0 <- stats::lm(log(v1) ~ log(normalised_OD), data = negative_data)
-    start <- list(a = exp(stats::coef(model_0)[1]),
-                  b = stats::coef(model_0)[2],
-                  c = 1)
-
-    model <- stats::nls(v1 ~ (a * normalised_OD ^ b + c),
-                        start = start, data = negative_data)
-
-  } else if (af_model == "linear_power") {
-    ## ax + bx^c + d
-    model_01 <- stats::lm(v1 ~ normalised_OD, data = negative_data)
-    model_02 <- stats::lm(log(v1) ~ log(normalised_OD), data = negative_data)
-    start <- list(a = stats::coef(model_01)[2],
-                  b = exp(stats::coef(model_02)[1]),
-                  c = stats::coef(model_02)[2],
-                  d = 1)
-
-    model <- stats::nls(v1 ~ (a * normalised_OD + b * normalised_OD ^ c + d),
-                        start = start,
-                        data = negative_data)
-  } else if (af_model == "loess") {
-    model <- stats::loess(v1 ~ normalised_OD,
-                          data = negative_data,
-                          span = 0.5)
-  } else if (af_model == "spline") {
-    model <- mgcv::gam(v1 ~ s(normalised_OD), data = negative_data)
+  model_spec <- af_models[[af_model]]
+  if (is.null(model_spec)) {
+    stop("Unknown af_model \"", af_model, "\". Must be one of: ",
+         paste(names(af_models), collapse = ", "))
   }
+  model <- model_spec$fit(negative_data)
 
-  # plot model fit curves ---------------------------------------------------
+  # plot model fit curve ------------------------------------------------------
 
-  if (af_model == "polynomial" | af_model == "power" |
-      af_model == "exponential" | af_model == "bi_exponential" |
-      af_model == "linear_exponential" | af_model == "linear_power" |
-      af_model == "loess") {
-    plt <- ggplot2::ggplot() +
-      ggplot2::geom_line(ggplot2::aes(x = negative_data$normalised_OD,
-                                      y = stats::predict(model,
-                                                         negative_data))) +
-      ggplot2::geom_point(ggplot2::aes(x = negative_data$normalised_OD,
-                                       y = negative_data$v1)) +
-      ggplot2::scale_x_continuous("normalised_OD") +
-      ggplot2::scale_y_continuous(flu_name) +
-      ggplot2::theme_bw()
-  } else if (af_model == "spline") {
-    plt <- ggplot2::ggplot() +
-      ggplot2::geom_line(ggplot2::aes(x = negative_data$normalised_OD,
-                                      y = mgcv::predict.gam(model, negative_data))) +
-      ggplot2::geom_point(ggplot2::aes(x = negative_data$normalised_OD,
-                                       y = negative_data$v1)) +
-      ggplot2::scale_x_continuous("normalised_OD") +
-      ggplot2::scale_y_continuous(flu_name) +
-      ggplot2::theme_bw()
-  }
-  else if (af_model == "inverse_poly") {
-    plt <- ggplot2::ggplot() +
-      ggplot2::geom_line(ggplot2::aes(x = negative_data$normalised_OD,
-                                      y = ((- (stats::coef(model)[1]) +
-                                              sqrt((stats::coef(model)[1]) ^ 2 -
-                                                     4 *
-                                                     (stats::coef(model)[2]) *
-                                                     (stats::coef(model)[3]) +
-                                                     4 *
-                                                     (stats::coef(model)[2]) *
-                                                     negative_data$normalised_OD)) /
-                                             (2 * (stats::coef(model)[2]))))) +
-      ggplot2::geom_point(ggplot2::aes(y = negative_data$v1,
-                                       x = negative_data$normalised_OD)) +
-      ggplot2::scale_x_continuous("normalised_OD") +
-      ggplot2::scale_y_continuous(flu_name) +
-      ggplot2::theme_bw()
-  }
+  plt <- ggplot2::ggplot() +
+    ggplot2::geom_line(ggplot2::aes(x = negative_data$normalised_OD,
+                                    y = model_spec$predict(model, negative_data))) +
+    ggplot2::geom_point(ggplot2::aes(x = negative_data$normalised_OD,
+                                     y = negative_data$v1)) +
+    ggplot2::scale_x_continuous("normalised_OD") +
+    ggplot2::scale_y_continuous(flu_name) +
+    ggplot2::theme_bw()
   ggplot2::ggsave(filename = gsub(".csv",
                                   paste("_norm-curve_", flu_name, ".pdf", sep = ""),
                                   data_csv),
@@ -272,23 +278,7 @@ flu_norm <- function(pr_data, neg_well, blank_well, flu_name, af_model, data_csv
 
   # normalise fluorescence data ---------------------------------------------
 
-  if (af_model == "polynomial" | af_model == "power" |
-      af_model == "exponential" | af_model == "bi_exponential" |
-      af_model == "linear_exponential" | af_model == "linear_power" |
-      af_model == "loess") {
-    pr_data$v1 <- pr_data$v1 - stats::predict(model, pr_data)
-  } else if (af_model == "spline") {
-    pr_data$v1 <- pr_data$v1 - mgcv::predict.gam(model, pr_data)
-  }
-  else if (af_model == "inverse_poly") {
-    pr_data$v1 <- pr_data$v1 - ((- (stats::coef(model)[1]) +
-                                   sqrt((stats::coef(model)[1]) ^ 2 - 4 *
-                                          (stats::coef(model)[2]) *
-                                          (stats::coef(model)[3]) +
-                                          4 * (stats::coef(model)[2]) *
-                                          pr_data$normalised_OD)) /
-                                  (2 * (stats::coef(model)[2])))
-  }
+  pr_data$v1 <- pr_data$v1 - model_spec$predict(model, pr_data)
 
   # rename normalised fluorescence column
   names(pr_data)[ncol(pr_data)] <- paste("normalised_", flu_name, sep = "")
