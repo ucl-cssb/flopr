@@ -469,7 +469,7 @@ generate_cfs <- function(calibration_csv) {
         saturated_list <- dplyr::bind_rows(saturated_list, df_rep_saturated)
       }
       temp_calib_meas_values <- dplyr::full_join(temp_calib_meas_values, saturated_list)
-      non_sat_values <- rbind(non_sat_values, temp_calib_meas_values %>% filter(.data$saturated == 'FALSE'))
+      non_sat_values <- rbind(non_sat_values, temp_calib_meas_values %>% dplyr::filter(.data$saturated == 'FALSE'))
       processed_data <- rbind(processed_data, temp_calib_meas_values)
 
       # calculate mean of replicates -------------
