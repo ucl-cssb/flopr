@@ -1,31 +1,3 @@
-#' Find next blank line
-#'
-#' @param start_idx
-#' @param data
-#'
-#' @return row index of next blank line
-next_blank <- function(start_idx, data){
-  next_start_idx <- start_idx
-  while (!is.na(data[next_start_idx, 1])) {
-    next_start_idx <- next_start_idx + 1
-  }
-  return(next_start_idx)
-}
-
-#' Find next non-blank line
-#'
-#' @param start_idx
-#' @param data
-#'
-#' @return row index of next non-blank line
-next_filled <- function(start_idx, data){
-  next_start_idx <- start_idx
-  while (is.na(data[next_start_idx, 1])) {
-    next_start_idx <- next_start_idx + 1
-  }
-  return(next_start_idx)
-}
-
 #' Parser for Tecan Infinite plate reader data
 #'
 #' @param data_csv path to .csv, .xls or .xlsx file from Tecan Infinit plate reader
@@ -61,7 +33,7 @@ infinite_parse <- function(data_csv, layout_csv, timeseries=F) {
     }
 
     # find where the next block starts
-    next_block_start_idx <- next_filled(start_time_idx + 1, data)
+    next_block_start_idx <- next_filled_cell(start_time_idx + 1, data, col=1)
 
     end_of_file <- F
     all_data <- c()
@@ -76,7 +48,7 @@ infinite_parse <- function(data_csv, layout_csv, timeseries=F) {
       }
 
       # find where the end of the current measurement block is
-      block_end_idx <- next_blank(next_block_start_idx, data)
+      block_end_idx <- next_blank_cell(next_block_start_idx, data, col=1)
 
       # grab the data only for that measurement
       new_block <- data[(next_block_start_idx + 1):(block_end_idx - 1), ]
@@ -104,65 +76,27 @@ infinite_parse <- function(data_csv, layout_csv, timeseries=F) {
       all_data <- rbind(all_data, joined_block)
 
       #
-      next_block_start_idx <- next_filled(block_end_idx + 1, data)
+      next_block_start_idx <- next_filled_cell(block_end_idx + 1, data, col=1)
     }
 
     # rearrange data ----------------------------------------------------------
     layout_cols <- ncol(plate_layout)
     out_data <- all_data %>%
       tidyr::pivot_wider(names_from = .data$measure, values_from = .data$value) %>%  # reshape so we have a column for each measurement type
-      dplyr::mutate(row = substr(x = .data$well, start = 1, stop = 1)) %>%  # make a "row" column from the "well" column
-      dplyr::mutate(column = as.numeric(substr(x = .data$well, start = 2,  # and make a "column" column
-                                               stop = nchar(.data$well)))) %>%
+      add_row_column() %>%  # make "row" and "column" columns from the "well" column
       dplyr::arrange_at(dplyr::vars(.data$time,  # order the rows
                                     .data$row,
                                     .data$column))
 
     # write parsed data to csv ------------------------------------------------
-    out_name <- gsub(".csv", "_parsed.csv", data_csv)
-    out_name <- gsub(".xlsx", "_parsed.csv", out_name)
+    out_name <- parsed_out_name(data_csv)
     utils::write.csv(x = out_data, file = out_name, row.names = FALSE)
 
     return(out_data)
   }
-  # else if (timeseries == FALSE){
-  #   start_time_idx <- which(data[, 1] == "Start Time")  # get start and end time ids
-  #   end_idx <- which(data[, 1] == "End Time")
-  #   names_idx <- which(data[, 1] == "Name")
-  #   names_idx <- names_idx[2:length(names_idx)]  # remove the first start time entry which just details plate type
-  #
-  #   all_data <- c()
-  #   for (i in seq_len(length(start_time_idx))) {
-  #     block_name <- data[names_idx[i], 2]  # record name of what is being measured
-  #
-  #     block_start <- start_time_idx[i] + 4  # find start and end of measurement block
-  #     block_end_idx <- end_idx[i] - 3
-  #
-  #     new_block <- data[(block_start):(block_end_idx), 1:2]  # grab and name the data
-  #     names(new_block)[1] <- "well"
-  #     names(new_block)[2] <- "value"
-  #
-  #     new_block$value <- as.numeric(new_block$value)
-  #
-  #     joined_block <- dplyr::full_join(plate_layout, new_block)  # join to plate layout csv, add measurement category
-  #     joined_block$measure <- block_name
-  #
-  #     all_data <- rbind(all_data, joined_block)  # add to all data
-  #   }
-  #
-  #   # rearrange data ----------------------------------------------------------
-  #   spread_data <- tidyr::pivot_wider(all_data, names_from = .data$measure,
-  #                                     values_from = .data$value)
-  #   spread_data$row <- substr(x = spread_data$well, start = 1, stop = 1)
-  #   spread_data$column <- as.numeric(substr(x = spread_data$well, start = 2,
-  #                                           stop = nchar(spread_data$well)))
-  #   spread_data <- dplyr::arrange_at(spread_data, dplyr::vars(.data$row,
-  #                                                             .data$column))
-  #
-  #   # write parsed data to csv ------------------------------------------------
-  #   out_name <- gsub(".csv", "_parsed.csv", data_csv)
-  #   utils::write.csv(x = spread_data, file = out_name, row.names = FALSE)
-  #
-  #   return(spread_data)
-  # }
+  else if (timeseries == FALSE){
+    stop("We can currently only parse timeseries from Tecan Infinite plate
+         readers. Please send me some single timepoint data so I can update the
+         parser.")
+  }
 }
