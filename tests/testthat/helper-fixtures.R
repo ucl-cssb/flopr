@@ -22,3 +22,25 @@ local_fixture_copy <- function(module, env = parent.frame()) {
   file.copy(files, dest_dir)
   dest_dir
 }
+
+#' A compact, order-insensitive numeric fingerprint of a data.frame
+#'
+#' Full data.frame snapshots get large and can be noisy across platforms
+#' (row order, floating point representation). This instead snapshots shape
+#' (rows/columns), column names, and per-numeric-column rounded sums/NA
+#' counts - sensitive to real regressions in the computed values, stable
+#' across row reordering.
+#'
+#' @param df a data.frame
+#' @param digits rounding applied to numeric sums before snapshotting
+#'
+#' @return a list suitable for testthat::expect_snapshot_value()
+fingerprint <- function(df, digits = 3) {
+  is_num <- vapply(df, is.numeric, logical(1))
+  list(
+    dim = dim(df),
+    names = names(df),
+    numeric_sums = round(vapply(df[is_num], sum, numeric(1), na.rm = TRUE), digits),
+    numeric_na_counts = vapply(df[is_num], function(x) sum(is.na(x)), integer(1))
+  )
+}
