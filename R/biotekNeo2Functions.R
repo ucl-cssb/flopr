@@ -87,12 +87,10 @@ biotek_parse <- function(data_xl, layout_csv, timeseries=T) {
       dplyr::select(-.data$id)
 
     # get split row and column names for convenience
-    out_data$row <- substr(x = out_data$well, start = 1, stop = 1)
-    out_data$column <- as.numeric(substr(x = out_data$well, start = 2,
-                                         stop = nchar(out_data$well)))
+    out_data <- add_row_column(out_data)
 
     # write parsed data to csv ------------------------------------------------
-    out_name <- paste(tools::file_path_sans_ext(data_xl), "_parsed.csv", sep="")
+    out_name <- parsed_out_name(data_xl)
     utils::write.csv(x = out_data, file = out_name, row.names = FALSE)
 
     return(out_data)
