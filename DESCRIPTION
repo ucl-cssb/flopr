@@ -24,7 +24,6 @@ Imports:
   dplyr,
   rlang,
   tidyr,
-  broom,
   mgcv,
   tidyselect,
   checkmate,
