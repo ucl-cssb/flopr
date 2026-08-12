@@ -120,6 +120,7 @@ process_plate <- function(data_csv, blank_well = "A1", neg_well = "A2",
 #'
 #' @importFrom dplyr %>%
 #' @importFrom rlang .data
+#' @noRd
 od_norm <- function(pr_data, blank_well, od_name) {
   pr_data$normalised_OD <- pr_data[, od_name]
 
@@ -258,10 +259,12 @@ af_models <- list(
 #' "linear_exponential", "power", "linear_power", "loess" or "spline".
 #' @param data_csv path to the original data. Used for saving normalisation curve plots.
 #'
-#' @return
+#' @return an updated data.frame with an additional \code{normalised_<flu_name>}
+#' column
 #'
 #' @importFrom dplyr %>%
 #' @importFrom rlang .data
+#' @noRd
 flu_norm <- function(pr_data, neg_well, blank_well, flu_name, af_model, data_csv) {
   pr_data$v1 <- pr_data[, flu_name]
 
@@ -311,7 +314,8 @@ flu_norm <- function(pr_data, neg_well, blank_well, flu_name, af_model, data_csv
 #' @importFrom dplyr %>%
 #' @importFrom rlang .data
 #'
-#' @return
+#' @return an updated data.frame with an additional \code{calibrated_OD} column
+#' @noRd
 calibrate_od <- function(pr_data, od_name, conversion_factors_csv) {
   conversion_factors <- utils::read.csv(conversion_factors_csv)
 
@@ -339,7 +343,9 @@ calibrate_od <- function(pr_data, od_name, conversion_factors_csv) {
 #' @importFrom dplyr %>%
 #' @importFrom rlang .data
 #'
-#' @return
+#' @return an updated data.frame with an additional \code{calibrated_<flu_name>}
+#' column
+#' @noRd
 calibrate_flu <- function(pr_data, flu_name, flu_gain, od_name, conversion_factors_csv) {
   conversion_factors <- utils::read.csv(conversion_factors_csv)
 

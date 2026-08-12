@@ -292,7 +292,9 @@ process_fcs_dir <-
 #' @param flow_frame a flow frame to be summarised
 #' @param flu_channels channels to summarise
 #'
-#' @return
+#' @return a data.frame with the geometric mean and standard deviation of
+#' each fluorescence channel
+#' @noRd
 summarise_data <- function(flow_frame, flu_channels){
   out_data <- c()
 
@@ -361,9 +363,10 @@ summarise_data <- function(flow_frame, flu_channels){
 #' data. Default = 0.025. Increase if erroneous peaks are being found, decrease
 #'  if not enough peaks are found.
 #'
-#' @return
+#' @return a list of fitted calibration model parameters for each
+#' fluorescence channel in \code{flu_channels}
 #' @importFrom rlang .data
-#'
+#' @noRd
 get_calibration <-
   function(bead_file,
            flu_channels,
@@ -629,8 +632,9 @@ get_calibration <-
 #' @param flu_channels a vector of strings of the fluorescence channels to keep
 #' in the processed data and plotting. Defaults to \code{"BL1-H"}.
 #'
-#' @return
-#'
+#' @return the log10-transformed \code{flowFrame} with zero/negative values
+#' trimmed
+#' @noRd
 prep_flow_frame <- function(flow_frame, flu_channels) {
   # log10 transform the values
   # log10_flow_frame <-
@@ -662,8 +666,8 @@ prep_flow_frame <- function(flow_frame, flu_channels) {
 #' @param pre_cleaned a flag to identify if debris has already been manually
 #' gated
 #'
-#' @return
-#'
+#' @return the \code{flowFrame} with background debris removed
+#' @noRd
 get_bacteria <- function(flow_frame, pre_cleaned) {
   if (!requireNamespace("flowClust", quietly = TRUE)) {
     stop("Package \"flowClust\" needed for this function to work. Please install it.",
@@ -730,8 +734,8 @@ get_bacteria <- function(flow_frame, pre_cleaned) {
 #'
 #' @param flow_frame a \code{flowFrame} for processing
 #'
-#' @return
-#'
+#' @return the \code{flowFrame} with doublet events removed
+#' @noRd
 get_singlets <- function(flow_frame) {
   if (!requireNamespace("flowStats", quietly = TRUE)) {
     stop("Package \"flowStats\" needed for this function to work. Please install it.",
@@ -759,8 +763,9 @@ get_singlets <- function(flow_frame) {
 #' get_calibration(...)
 #' @param normalise Boolean flag to indicate if data has been normalised
 #'
-#' @return
-#'
+#' @return the \code{flowFrame} with fluorescence channels converted to MEF
+#' units
+#' @noRd
 to_mef <-
   function(flow_frame,
            flu_channels,
@@ -817,6 +822,7 @@ to_mef <-
 #' to MEF values. Requires an .fcs file with named \code{"*beads*.fcs"}.
 #' Defaults to \code{FALSE}.
 #'
+#' @noRd
 plot_trimming <-
   function(flow_frame,
            bacteria_flow_frame,

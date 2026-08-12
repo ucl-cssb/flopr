@@ -22,6 +22,7 @@
 #' A \code{flowFrame} (see \pkg{flowCore})
 #' @author Mike Jiang
 #' @keywords IO
+#' @noRd
 ff_append_cols <- function(fr, cols){
   new_pd <- cols_to_pd(fr, cols)
   pd <- flowCore::pData(flowCore::parameters(fr))
