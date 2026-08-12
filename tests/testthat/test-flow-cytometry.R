@@ -64,14 +64,7 @@ test_that("process_fcs() and process_fcs_dir() never modify their .fcs inputs", 
 })
 
 test_that("process_fcs() stops on a sample with no bacteria found (needs-discussion/002)", {
-  skip("Blocked on backlog 046 - the 'no bacteria found' guard is currently dead
-        code (compares a flowFrame to 0, silently swallowed by try()), so this
-        never actually stops today. Un-skip once 046 lands, using a fixture
-        that's been subsetted down to all-debris/near-empty events.")
-
   dir <- local_fixture_copy("flow_cytometry")
-  # a fixture with (close to) no real bacteria events - construct by heavily
-  # subsetting an existing .fcs file once this test is un-skipped
   expect_error(
     process_fcs(
       fcs_file = file.path(dir, "no_bacteria.fcs"),
@@ -81,4 +74,30 @@ test_that("process_fcs() stops on a sample with no bacteria found (needs-discuss
     ),
     "[Nn]o bacteria"
   )
+})
+
+test_that("process_fcs_dir() skips (rather than halts on) a file with no bacteria found (backlog 046)", {
+  dir <- local_fixture_copy("flow_cytometry")
+
+  expect_warning(
+    process_fcs_dir(
+      dir_path = dir,
+      pattern = "*.fcs",  # matches every fixture, including no_bacteria.fcs
+      flu_channels = "BL1-H",
+      pre_cleaned = TRUE,
+      do_plot = FALSE
+    ),
+    "[Nn]o bacteria"
+  )
+
+  summary_path <- file.path(paste0(dir, "_processed"), "data_summary.csv")
+  expect_true(file.exists(summary_path))
+  summary_data <- utils::read.csv(summary_path)
+
+  # the no-bacteria file is recorded as skipped, not silently dropped...
+  expect_true(any(summary_data$channel == "SKIPPED_no_bacteria_found"))
+  # ...while the other two files in the batch were still processed normally
+  expect_false(file.exists(file.path(paste0(dir, "_processed"), "no_bacteria.fcs")))
+  expect_true(file.exists(file.path(paste0(dir, "_processed"), "pWeak_None_0_1.fcs")))
+  expect_true(file.exists(file.path(paste0(dir, "_processed"), "pNeg_None_0_1.fcs")))
 })

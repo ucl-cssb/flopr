@@ -40,10 +40,9 @@ process_fcs <-
     ## Try to remove background debris by clustering
     bacteria_flow_frame <-
       get_bacteria(prepped_flow_frame, pre_cleaned)
-    try(if (bacteria_flow_frame == 0) {
-      stop()
-    }, silent = T)
-    # if we haven't found bacteria, stop
+    if (flowCore::nrow(bacteria_flow_frame) == 0) {
+      stop("No bacteria found in ", fcs_file)
+    }
 
     ## Try to remove doublets
     singlet_flow_frame <- get_singlets(bacteria_flow_frame)
@@ -168,7 +167,8 @@ process_fcs_dir <-
                         bead_dens_bw)
     }
 
-    if (!is.na(neg_fcs)) {
+    neg_control_available <- !is.na(neg_fcs)
+    if (neg_control_available) {
       print("Getting autofluorescence normalisation parameter")
 
       flow_frame <-
@@ -181,13 +181,14 @@ process_fcs_dir <-
       ## Try to remove background debris by clustering
       bacteria_flow_frame <-
         get_bacteria(prepped_flow_frame, pre_cleaned)
-      try(if (bacteria_flow_frame == 0) {
-        print("No bacteria found in negative control .fcs file")
-      }, silent = T)
-      # if we haven't found bacteria move on to the next flow frame
-
-      ## Try to remove doublets
-      negative_flow_frame <- get_singlets(bacteria_flow_frame)
+      if (flowCore::nrow(bacteria_flow_frame) == 0) {
+        warning("No bacteria found in negative control .fcs file - skipping ",
+                "fluorescence normalisation.")
+        neg_control_available <- FALSE
+      } else {
+        ## Try to remove doublets
+        negative_flow_frame <- get_singlets(bacteria_flow_frame)
+      }
     }
 
     all_files <-
@@ -211,17 +212,23 @@ process_fcs_dir <-
       ## Try to remove background debris by clustering
       bacteria_flow_frame <-
         get_bacteria(prepped_flow_frame, pre_cleaned)
-      try(if (bacteria_flow_frame == 0) {
+      if (flowCore::nrow(bacteria_flow_frame) == 0) {
+        warning("No bacteria found in ", next_fcs, " - skipping this file.")
+        summarised_data <- rbind(summarised_data, data.frame(
+          file = flowCore::description(flow_frame)$GUID,
+          channel = "SKIPPED_no_bacteria_found",
+          mean = NA,
+          sd = NA
+        ))
         next
-      }, silent = T)
-      # if we haven't found bacteria move on to the next flow frame
+      }
 
       ## Try to remove doublets
       singlet_flow_frame <- get_singlets(bacteria_flow_frame)
 
       ## normalise autofluorescence
       normalised_flow_frame <- singlet_flow_frame
-      if (!is.na(neg_fcs)) {
+      if (neg_control_available) {
         for (flu in flu_channels) {
           ## get geometric mean of negative control for given fluorescence channel
           neg_mean <-
@@ -250,7 +257,7 @@ process_fcs_dir <-
           calibrated_flow_frame,
           flu_channels,
           calibration_parameters,
-          !is.na(neg_fcs)
+          neg_control_available
         )
       }
 
@@ -276,7 +283,7 @@ process_fcs_dir <-
           calibrated_flow_frame,
           flu_channels,
           out_name,
-          !is.na(neg_fcs),
+          neg_control_available,
           calibrate
         )
       }
