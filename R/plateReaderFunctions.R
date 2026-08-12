@@ -78,7 +78,7 @@ process_plate <- function(data_csv, blank_well = "A1", neg_well = "A2",
     out_data <- calibrate_od(out_data, od_name,
                              conversion_factors_csv)
 
-    if(!is.na(flu_names)){
+    if(all(!is.na(flu_names))){
       for (flu_idx in seq_len(length(flu_names))) {
         if(length(flu_gains) >= flu_idx){
           out_data <- calibrate_flu(out_data, flu_names[flu_idx],
