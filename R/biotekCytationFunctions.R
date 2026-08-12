@@ -87,21 +87,13 @@ cytation_parse <- function(data_csv, layout_csv, timeseries=T) {
     # rearrange data ----------------------------------------------------------
     out_data <- all_data %>%
       tidyr::pivot_wider(names_from = .data$measure, values_from = .data$value) %>%  # reshape so we have a column for each measurement type
-      dplyr::mutate(row = substr(x = .data$well, start = 1, stop = 1)) %>%  # make a "row" column from the "well" column
-      dplyr::mutate(column = as.numeric(substr(x = .data$well, start = 2,  # and make a "column" column
-                                               stop = nchar(.data$well)))) %>%
+      add_row_column() %>%  # make "row" and "column" columns from the "well" column
       dplyr::arrange_at(dplyr::vars(.data$time,  # order the rows
                                     .data$row,
                                     .data$column))
 
     # write parsed data to csv ------------------------------------------------
-    if(stringr::str_ends(data_csv, ".xlsx")){
-      out_name <- gsub(".xlsx", "_parsed.csv", data_csv)
-    } else if(stringr::str_ends(data_csv, ".xls")){
-      out_name <- gsub(".xls", "_parsed.csv", data_csv)
-    } else if(stringr::str_ends(data_csv, ".csv")){
-      out_name <- gsub(".xls", "_parsed.csv", data_csv)
-    }
+    out_name <- parsed_out_name(data_csv)
     utils::write.csv(x = out_data, file = out_name, row.names = FALSE)
 
     return(out_data)
@@ -141,21 +133,12 @@ cytation_parse <- function(data_csv, layout_csv, timeseries=T) {
     joined_block <- dplyr::full_join(plate_layout, all_data, by = 'well')
 
     # split row and column from well
-    joined_block$row <- substr(x = joined_block$well, start = 1, stop = 1)
-    joined_block$column <- as.numeric(substr(x = joined_block$well, start = 2,
-                                             stop = nchar(joined_block$well)))
+    joined_block <- add_row_column(joined_block)
     joined_block <- dplyr::arrange_at(joined_block, dplyr::vars(.data$row,
                                                                 .data$column))
 
     # write parsed data to csv ------------------------------------------------
-
-    if(stringr::str_ends(data_csv, ".xlsx")){
-      out_name <- gsub(".xlsx", "_parsed.csv", data_csv)
-    } else if(stringr::str_ends(data_csv, ".xls")){
-      out_name <- gsub(".xls", "_parsed.csv", data_csv)
-    } else if(stringr::str_ends(data_csv, ".csv")){
-      out_name <- gsub(".csv", "_parsed.csv", data_csv)
-    }
+    out_name <- parsed_out_name(data_csv)
     utils::write.csv(x = joined_block, file = out_name, row.names = FALSE)
 
     return(joined_block)
