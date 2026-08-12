@@ -15,7 +15,9 @@ sparkParse(data_csv, layout_csv)
 a data.frame containing the parsed plate reader data
 }
 \description{
-Parser for Tecan Spark plate reader data
+Deprecated alias for \code{\link{spark_parse}}. Only forwards \code{data_csv}
+and \code{layout_csv} - use \code{spark_parse()} directly to access its
+\code{timeseries} and \code{wells_as_columns} arguments.
 }
 \examples{
 \dontrun{

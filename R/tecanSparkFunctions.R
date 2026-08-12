@@ -74,7 +74,7 @@ spark_parse <- function(data_csv, layout_csv, timeseries=F, wells_as_columns=F) 
                               names_to = "time",
                               values_to = "value",
                               values_transform = list(value = as.numeric)) %>%
-          dplyr::mutate(time = as.numeric(time))
+          dplyr::mutate(time = as.numeric(.data$time))
       } else if(wells_as_columns){
         wells <- new_block[1, -c(1,3)]
         new_block <- new_block[-1,-c(1,3)]
@@ -85,7 +85,7 @@ spark_parse <- function(data_csv, layout_csv, timeseries=F, wells_as_columns=F) 
                               names_to = "well",
                               values_to = "value",
                               values_transform = list(value = as.numeric)) %>%
-          dplyr::mutate(time = as.numeric(time))
+          dplyr::mutate(time = as.numeric(.data$time))
       }
 
       # add info for each well
@@ -161,6 +161,11 @@ spark_parse <- function(data_csv, layout_csv, timeseries=F, wells_as_columns=F) 
 
 #' Parser for Tecan Spark plate reader data
 #'
+#' @description
+#' Deprecated alias for \code{\link{spark_parse}}. Only forwards \code{data_csv}
+#' and \code{layout_csv} - use \code{spark_parse()} directly to access its
+#' \code{timeseries} and \code{wells_as_columns} arguments.
+#'
 #' @param data_csv path to csv file from Tecan Spark plate reader
 #' @param layout_csv path to csv file containing plate layout information
 #'
@@ -173,5 +178,6 @@ spark_parse <- function(data_csv, layout_csv, timeseries=F, wells_as_columns=F) 
 #'            layout_csv = "examples/plate_reader/tecan_spark/calibration_plate_layout.csv")
 #' }
 sparkParse <- function(data_csv, layout_csv) {
+  .Deprecated("spark_parse")
   return(spark_parse(data_csv, layout_csv))
 }
