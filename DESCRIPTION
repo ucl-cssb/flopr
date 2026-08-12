@@ -29,5 +29,8 @@ Imports:
 Suggests:
   flowCore,
   flowClust,
-  flowStats
+  flowStats,
+  testthat (>= 3.0.0),
+  withr
 RoxygenNote: 7.2.3
+Config/testthat/edition: 3
