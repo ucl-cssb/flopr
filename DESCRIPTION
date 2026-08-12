@@ -14,6 +14,7 @@ BugReports: https://github.com/ucl-cssb/flopr/issues
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
+Additional_repositories: https://bioconductor.org/packages/release/bioc
 Imports:
   ggplot2,
   gridExtra,
