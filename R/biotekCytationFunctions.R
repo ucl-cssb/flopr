@@ -70,9 +70,9 @@ cytation_parse <- function(data_csv, layout_csv, timeseries=T) {
                             names_to = "well",
                             values_to = "value",
                             values_transform = list(value = as.numeric)) %>%
-        dplyr::mutate(time = as.numeric(time),
-                      time = time*24*60*60,
-                      time = round(time/600)*600) # round to nearest 10 minute
+        dplyr::mutate(time = as.numeric(.data$time),
+                      time = .data$time*24*60*60,
+                      time = round(.data$time/600)*600) # round to nearest 10 minute
 
       # add info for each well
       joined_block <- dplyr::full_join(plate_layout, new_block)
