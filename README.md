@@ -316,22 +316,30 @@ autofluorescence increases, perhaps due increased production of the
 autofluorescent molecules and changes in cell size.
 
 In order to remove this autofluorescence from our sample data we fit a
-curve to our negative control data. We provide four different models
+curve to our negative control data. We provide several different models
 that the user can choose to fit their data (and if desired more models
-can be added). There are two smoothing models: “loess” and “spline”. The
-primary difference to the user between these two models is that the
-“spline” is able to extrapolate beyond the negative control data
-provided. This means that if the range of absorbance values at which you
-have measurements of your negative control is smaller than the range of
-your samples, we can still make an attempt at normalisation. However,
-this extrapolation is very crude (linear from the last data point) and
-can produce poor normalisation in the extrapolated range. Fortunately,
-negative controls tend to grow better than fluorescent samples, so
-extrapolation is often not an issue. We also provide a second-order
-polynomial and an exponential model, specified by “polynomial” and
-“exponential” repsectively. These are inherently able to make
-predictions beyond the range of normalised data and therefore may be
-good starting points.
+can be added), specified via `af_model`. There are two smoothing models:
+“loess” and “spline”. The primary difference to the user between these
+two models is that the “spline” is able to extrapolate beyond the
+negative control data provided. This means that if the range of
+absorbance values at which you have measurements of your negative
+control is smaller than the range of your samples, we can still make an
+attempt at normalisation. However, this extrapolation is very crude
+(linear from the last data point) and can produce poor normalisation in
+the extrapolated range. Fortunately, negative controls tend to grow
+better than fluorescent samples, so extrapolation is often not an issue.
+We also provide a second-order polynomial and an exponential model,
+specified by “polynomial” and “exponential” respectively. These are
+inherently able to make predictions beyond the range of normalised data
+and therefore may be good starting points.
+
+A handful of further curve-fitting models are also available for cases
+where the ones above don’t fit well: “inverse_poly”, “bi_exponential”,
+“linear_exponential”, “power” and “linear_power”. These are more
+specialised (and can be more prone to fitting failures on noisy data) -
+we’d recommend starting with “spline”, “loess”, “polynomial” or
+“exponential” and only reaching for these if none of those four perform
+well on your data.
 
 Prolonged periods in stationary phase can cause autofluorescence to
 increase while absorbance remains stable and in some cases absorbance

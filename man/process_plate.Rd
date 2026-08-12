@@ -27,8 +27,9 @@ process_plate(
 
 \item{flu_names}{the column names for the fluorescence data}
 
-\item{af_model}{model used to fit negative control autofluorescence.
-For now these include "polynomial", "invers_poly", "exponential", "spline" and "loess".}
+\item{af_model}{model used to fit negative control autofluorescence. One of
+"polynomial", "inverse_poly", "exponential", "bi_exponential",
+"linear_exponential", "power", "linear_power", "loess" or "spline".}
 
 \item{to_MEFL}{a Boolean to determine whether to attempt to convert OD and
 GFP reading to calibrated units}

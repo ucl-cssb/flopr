@@ -5,8 +5,9 @@
 #' @param neg_well the well coordinates of a non-fluorescent control
 #' @param od_name the column name for the optical density data
 #' @param flu_names the column names for the fluorescence data
-#' @param af_model model used to fit negative control autofluorescence.
-#' For now these include "polynomial", "invers_poly", "exponential", "spline" and "loess".
+#' @param af_model model used to fit negative control autofluorescence. One of
+#' "polynomial", "inverse_poly", "exponential", "bi_exponential",
+#' "linear_exponential", "power", "linear_power", "loess" or "spline".
 #' @param to_MEFL a Boolean to determine whether to attempt to convert OD and
 #' GFP reading to calibrated units
 #' @param flu_gains if to_MEFL=T, the gain values at which the fluorophores
@@ -252,8 +253,9 @@ af_models <- list(
 #' @param neg_well the well coordinates of a non-fluorescent control
 #' @param blank_well the well coordinates of a media blank
 #' @param flu_name the column name of the fluorescence chanel to normalise
-#' @param af_model model used to fit negative control autofluorescence.
-#' For now these include "polynomial", "invers_poly", "exponential", "spline" or "loess".
+#' @param af_model model used to fit negative control autofluorescence. One of
+#' "polynomial", "inverse_poly", "exponential", "bi_exponential",
+#' "linear_exponential", "power", "linear_power", "loess" or "spline".
 #' @param data_csv path to the original data. Used for saving normalisation curve plots.
 #'
 #' @return

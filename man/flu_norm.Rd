@@ -16,8 +16,9 @@ normalised}
 
 \item{flu_name}{the column name of the fluorescence chanel to normalise}
 
-\item{af_model}{model used to fit negative control autofluorescence.
-For now these include "polynomial", "invers_poly", "exponential", "spline" or "loess".}
+\item{af_model}{model used to fit negative control autofluorescence. One of
+"polynomial", "inverse_poly", "exponential", "bi_exponential",
+"linear_exponential", "power", "linear_power", "loess" or "spline".}
 
 \item{data_csv}{path to the original data. Used for saving normalisation curve plots.}
 }
