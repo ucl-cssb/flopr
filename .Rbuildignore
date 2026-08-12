@@ -4,3 +4,5 @@
 ^README\.Rmd$
 ^CONTEXT\.md$
 ^LICENSE$
+^\.github$
+^\.scratch$
