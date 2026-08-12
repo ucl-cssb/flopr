@@ -139,6 +139,7 @@ od_norm <- function(pr_data, blank_well, od_name) {
 #' fitted model) and a \code{predict} function (model, newdata -> predicted
 #' fluorescence), so \code{flu_norm} only has one place that dispatches on
 #' \code{af_model} instead of three parallel chains.
+#' @importFrom mgcv gam predict.gam
 #' @noRd
 af_models <- list(
   polynomial = list(
