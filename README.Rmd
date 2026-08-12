@@ -13,6 +13,9 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+<!-- badges: start -->
+[![R-CMD-check](https://github.com/ucl-cssb/flopr/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/ucl-cssb/flopr/actions/workflows/R-CMD-check.yaml)
+<!-- badges: end -->
 
 ## Prerequisite Knowledge
 

@@ -16,6 +16,12 @@ Alex J H Fedorec
     -   [Process a single .fcs file](#process-a-single-fcs-file)
     -   [Process a folder of .fcs files](#process-a-folder-of-fcs-files)
 
+<!-- badges: start -->
+
+[![R-CMD-check](https://github.com/ucl-cssb/flopr/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/ucl-cssb/flopr/actions/workflows/R-CMD-check.yaml)
+
+<!-- badges: end -->
+
 ## Prerequisite Knowledge
 
 We have attempted to make our software usable with minimal prior
