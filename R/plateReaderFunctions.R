@@ -359,8 +359,11 @@ calibrate_flu <- function(pr_data, flu_name, flu_gain, od_name, conversion_facto
     return(pr_data)
   }
 
-  tryCatch(this_cf <- flu_cfs[which(flu_cfs$measure == paste(flu_name, flu_gain)),]$cf,
-           finally = this_cf <- NA)
+  this_cf <- tryCatch(
+    flu_cfs[which(flu_cfs$measure == paste(flu_name, flu_gain)), ]$cf,
+    error = function(e) NA
+  )
+  if (length(this_cf) == 0) this_cf <- NA
 
 
   # if a conversion factor doesn't exist at the measured gain, try a --------

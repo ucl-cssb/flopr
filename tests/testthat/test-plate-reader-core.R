@@ -48,9 +48,6 @@ test_that("process_plate() handles multi-fluorophore + to_MEFL=TRUE (backlog 004
 })
 
 test_that("calibrate_flu() uses an exact gain match when available (needs-discussion/001)", {
-  skip("Blocked on backlog 045 - calibrate_flu()'s tryCatch(finally=...) bug always
-        discards the exact match today. Un-skip once 045 lands.")
-
   dir <- local_fixture_copy("tecan_spark")
   spark_parse(
     data_csv = file.path(dir, "191219_calibration_membrane.csv"),
@@ -62,8 +59,11 @@ test_that("calibrate_flu() uses an exact gain match when available (needs-discus
   # "GFP 40" (gain 40) is measured directly in the calibration data, so
   # calibrate_flu(flu_gain = 40) should use that exact cf, not an
   # interpolated model fit - this is exactly the path needs-discussion/001
-  # found permanently unreachable.
-  exact_row <- cfs[cfs$measure == "GFP 40", ]
+  # found permanently unreachable. Filter by fluorophore first, matching
+  # calibrate_flu()'s own logic - "GFP 40" is also a valid measure column
+  # for the microspheres calibrant (fluorophore == ""), so a bare
+  # measure-only filter picks up both.
+  exact_row <- cfs[cfs$measure == "GFP 40" & cfs$fluorophore == "GFP", ]
   expect_equal(nrow(exact_row), 1)
 
   pr_data <- data.frame(well = "A1", normalised_GFP = 1000)
