@@ -27,7 +27,9 @@ Imports:
   mgcv,
   tidyselect,
   checkmate,
-  readxl
+  readxl,
+  stringr,
+  tools
 Suggests:
   flowCore,
   flowClust,
