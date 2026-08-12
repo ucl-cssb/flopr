@@ -15,7 +15,7 @@
 #'                 layout_csv = "examples/plate_reader/tecan_infinite/calibration_plate_layout.csv",
 #'                 timeseries = TRUE)
 #' }
-infinite_parse <- function(data_csv, layout_csv, timeseries=F) {
+infinite_parse <- function(data_csv, layout_csv, timeseries=T) {
 
   if(stringr::str_ends(data_csv, ".xlsx") | stringr::str_ends(data_csv, ".xls")){
     data <- as.data.frame(readxl::read_excel(path = data_csv,

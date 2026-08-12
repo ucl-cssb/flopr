@@ -17,7 +17,7 @@
 #'             layout_csv = "examples/plate_reader/tecan_spark/calibration_plate_layout.csv",
 #'             timeseries = FALSE)
 #' }
-spark_parse <- function(data_csv, layout_csv, timeseries=F, wells_as_columns=F) {
+spark_parse <- function(data_csv, layout_csv, timeseries=T, wells_as_columns=F) {
 
   if(stringr::str_ends(data_csv, ".xlsx") | stringr::str_ends(data_csv, ".xls")){
     data <- as.data.frame(readxl::read_excel(path = data_csv,

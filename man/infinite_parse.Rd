@@ -4,7 +4,7 @@
 \alias{infinite_parse}
 \title{Parser for Tecan Infinite plate reader data}
 \usage{
-infinite_parse(data_csv, layout_csv, timeseries = F)
+infinite_parse(data_csv, layout_csv, timeseries = T)
 }
 \arguments{
 \item{data_csv}{path to .csv, .xls or .xlsx file from Tecan Infinit plate reader}

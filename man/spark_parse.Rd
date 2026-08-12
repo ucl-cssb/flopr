@@ -4,7 +4,7 @@
 \alias{spark_parse}
 \title{Parser for Tecan Spark plate reader data}
 \usage{
-spark_parse(data_csv, layout_csv, timeseries = F, wells_as_columns = F)
+spark_parse(data_csv, layout_csv, timeseries = T, wells_as_columns = F)
 }
 \arguments{
 \item{data_csv}{path to .csv, .xls or .xlsx file from Tecan Spark plate reader}
