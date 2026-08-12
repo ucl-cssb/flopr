@@ -92,11 +92,9 @@ cytation_parse <- function(data_csv, layout_csv, timeseries=T) {
 
     # rearrange data ----------------------------------------------------------
     out_data <- all_data %>%
-      tidyr::pivot_wider(names_from = .data$measure, values_from = .data$value) %>%  # reshape so we have a column for each measurement type
+      tidyr::pivot_wider(names_from = measure, values_from = value) %>%  # reshape so we have a column for each measurement type
       add_row_column() %>%  # make "row" and "column" columns from the "well" column
-      dplyr::arrange_at(dplyr::vars(.data$time,  # order the rows
-                                    .data$row,
-                                    .data$column))
+      dplyr::arrange(time, row, column)  # order the rows
 
     # write parsed data to csv ------------------------------------------------
     out_name <- parsed_out_name(data_csv)
@@ -140,8 +138,7 @@ cytation_parse <- function(data_csv, layout_csv, timeseries=T) {
 
     # split row and column from well
     joined_block <- add_row_column(joined_block)
-    joined_block <- dplyr::arrange_at(joined_block, dplyr::vars(.data$row,
-                                                                .data$column))
+    joined_block <- dplyr::arrange(joined_block, row, column)
 
     # write parsed data to csv ------------------------------------------------
     out_name <- parsed_out_name(data_csv)

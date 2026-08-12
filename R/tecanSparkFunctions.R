@@ -101,11 +101,9 @@ spark_parse <- function(data_csv, layout_csv, timeseries=F, wells_as_columns=F) 
 
     # rearrange data ----------------------------------------------------------
     out_data <- all_data %>%
-      tidyr::pivot_wider(names_from = .data$measure, values_from = .data$value) %>%  # reshape so we have a column for each measurement type
+      tidyr::pivot_wider(names_from = measure, values_from = value) %>%  # reshape so we have a column for each measurement type
       add_row_column() %>%  # make "row" and "column" columns from the "well" column
-      dplyr::arrange_at(dplyr::vars(.data$time,  # order the rows
-                                    .data$row,
-                                    .data$column))
+      dplyr::arrange(time, row, column)  # order the rows
 
     # write parsed data to csv ------------------------------------------------
     out_name <- parsed_out_name(data_csv)
@@ -145,11 +143,10 @@ spark_parse <- function(data_csv, layout_csv, timeseries=F, wells_as_columns=F) 
     }
 
     # rearrange data ----------------------------------------------------------
-    spread_data <- tidyr::pivot_wider(all_data, names_from = .data$measure,
-                                      values_from = .data$value)
+    spread_data <- tidyr::pivot_wider(all_data, names_from = measure,
+                                      values_from = value)
     spread_data <- add_row_column(spread_data)
-    spread_data <- dplyr::arrange_at(spread_data, dplyr::vars(.data$row,
-                                                              .data$column))
+    spread_data <- dplyr::arrange(spread_data, row, column)
 
     # write parsed data to csv ------------------------------------------------
     out_name <- parsed_out_name(data_csv)

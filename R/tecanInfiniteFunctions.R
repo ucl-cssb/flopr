@@ -88,11 +88,9 @@ infinite_parse <- function(data_csv, layout_csv, timeseries=F) {
     # rearrange data ----------------------------------------------------------
     layout_cols <- ncol(plate_layout)
     out_data <- all_data %>%
-      tidyr::pivot_wider(names_from = .data$measure, values_from = .data$value) %>%  # reshape so we have a column for each measurement type
+      tidyr::pivot_wider(names_from = measure, values_from = value) %>%  # reshape so we have a column for each measurement type
       add_row_column() %>%  # make "row" and "column" columns from the "well" column
-      dplyr::arrange_at(dplyr::vars(.data$time,  # order the rows
-                                    .data$row,
-                                    .data$column))
+      dplyr::arrange(time, row, column)  # order the rows
 
     # write parsed data to csv ------------------------------------------------
     out_name <- parsed_out_name(data_csv)

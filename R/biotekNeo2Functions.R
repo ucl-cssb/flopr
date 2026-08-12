@@ -55,7 +55,7 @@ biotek_parse <- function(data_xl, layout_csv, timeseries=T) {
       # and rename columns
       wells <- new_block[1, -2]
       trimmed_new_block <- new_block[-1, -2]
-      names(trimmed_new_block) <- wells
+      names(trimmed_new_block) <- unlist(wells)
       names(trimmed_new_block)[1] <- "time"
 
       # hack to unify times of readings across different measurements
@@ -88,9 +88,9 @@ biotek_parse <- function(data_xl, layout_csv, timeseries=T) {
     out_data <- all_data %>%
       dplyr::group_by(.data$measure) %>%
       dplyr::mutate(id = dplyr::row_number()) %>%
-      tidyr::pivot_wider(names_from = .data$measure,
-                         values_from = .data$value) %>%
-      dplyr::select(-.data$id)
+      tidyr::pivot_wider(names_from = measure,
+                         values_from = value) %>%
+      dplyr::select(-id)
 
     # get split row and column names for convenience
     out_data <- add_row_column(out_data)
