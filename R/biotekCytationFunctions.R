@@ -1,9 +1,9 @@
 #' Parser for Biotek Cytation plate reader data
 #'
-#' @param data_xl path to xls or xlsx file from Biotek Cytation plate reader
+#' @param data_csv path to a .csv, .xls or .xlsx file from Biotek Cytation plate reader
 #' @param layout_csv path to csv file containing plate layout information
 #' @param timeseries Boolean flag indicating whether the data is a timeseries or
-#' single recording. Currently only works for timeseries=T.
+#' single recording.
 #'
 #' @return a data.frame containing the parsed plate reader data
 #' @export

@@ -7,12 +7,12 @@
 cytation_parse(data_csv, layout_csv, timeseries = T)
 }
 \arguments{
+\item{data_csv}{path to a .csv, .xls or .xlsx file from Biotek Cytation plate reader}
+
 \item{layout_csv}{path to csv file containing plate layout information}
 
 \item{timeseries}{Boolean flag indicating whether the data is a timeseries or
-single recording. Currently only works for timeseries=T.}
-
-\item{data_xl}{path to xls or xlsx file from Biotek Cytation plate reader}
+single recording.}
 }
 \value{
 a data.frame containing the parsed plate reader data
