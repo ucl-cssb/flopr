@@ -163,6 +163,34 @@ A handful of further curve-fitting models are also available for cases where the
 
 Prolonged periods in stationary phase can cause autofluorescence to increase while absorbance remains stable and in some cases absorbance can start decreasing while autofluorescence does not. In these circumstances, none of the models perform particularly well. The performance of each of them should be checked and if none of them perform satisfactorily it may be necessary to trim the data to remove confounding timepoints.
 
+### Other supported plate readers
+
+The walkthrough above uses a Tecan Spark, but flopR also parses data from a Biotek Cytation, a Biotek Neo 2 and a Tecan Infinite. Once parsed, the output of each of these functions is used with `generate_cfs()` and `process_plate()` in exactly the same way as `spark_parse()`'s output above.
+
+For a Biotek Cytation, `cytation_parse()` reads either the raw `.xlsx`/`.xls` export or a `.csv` you've saved from it, alongside the same kind of plate layout `.csv` used above:
+
+```{r eval=FALSE}
+flopr::cytation_parse(data_csv = "examples/plate_reader/biotek_cytation/231031_pr_calibration_membrane.xlsx",
+                      layout_csv = "examples/plate_reader/biotek_cytation/plate_layout.csv",
+                      timeseries = FALSE)
+```
+
+For a Biotek Neo 2, `biotek_parse()` works the same way, reading the raw `.xlsx`/`.xls` export:
+
+```{r eval=FALSE}
+flopr::biotek_parse(data_xl = "examples/plate_reader/biotek_neo2/biotek-neo2_example_data.xlsx",
+                    layout_csv = "examples/plate_reader/biotek_neo2/layout.csv",
+                    timeseries = TRUE)
+```
+
+For a Tecan Infinite, `infinite_parse()` follows the same pattern as `spark_parse()` above (a `timeseries` flag distinguishing single-timepoint from timeseries exports):
+
+```{r eval=FALSE}
+flopr::infinite_parse(data_csv = "examples/plate_reader/tecan_infinite/calibration_data.csv",
+                      layout_csv = "examples/plate_reader/tecan_infinite/calibration_plate_layout.csv",
+                      timeseries = TRUE)
+```
+
 ## Flow Cytometry Processing
 
 We have two functions for processing flow cytometry data:
