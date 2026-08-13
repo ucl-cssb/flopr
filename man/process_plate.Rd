@@ -9,7 +9,9 @@ process_plate(
   blank_well = "A1",
   neg_well = "A2",
   od_name = "OD",
+  od_calib_names = od_name,
   flu_names = c("GFP"),
+  flu_calib_names = flu_names,
   af_model = "spline",
   to_MEFL = F,
   flu_gains,
@@ -23,9 +25,24 @@ process_plate(
 
 \item{neg_well}{the well coordinates of a non-fluorescent control}
 
-\item{od_name}{the column name for the optical density data}
+\item{od_name}{the column name(s) for the optical density data. Can be a
+vector to normalise/calibrate more than one OD reading (e.g. OD600 and
+OD700) - the first element is the "primary" OD, the one autofluorescence
+correction is modelled against; the others are normalised/calibrated
+alongside it but don't affect fluorescence normalisation.}
+
+\item{od_calib_names}{the value(s) to match against conversion_factors_csv's
+"measure" column, one per \code{od_name} - defaults to \code{od_name}, but
+can be set separately when the calibration run used a different raw column
+naming convention than this experiment (e.g. this experiment's OD column is
+"absorbance:600" but the calibration file's measure is "OD600").}
 
 \item{flu_names}{the column names for the fluorescence data}
+
+\item{flu_calib_names}{the value(s) to match against conversion_factors_csv's
+"fluorophore"/"measure" columns, one per \code{flu_names} - defaults to
+\code{flu_names}, but can be set separately for the same reason as
+\code{od_calib_names}.}
 
 \item{af_model}{model used to fit negative control autofluorescence. One of
 "polynomial", "inverse_poly", "exponential", "bi_exponential",

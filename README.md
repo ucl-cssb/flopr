@@ -273,14 +273,28 @@ Let’s walk through what each of the arguments do:
     controls. These are used for normalising fluorescence. As above, if
     you only have one negative control well you can specify it using
     `neg_well = "C6"` for example.
--   `od_name` is the name of the column containing our absorbance values
-    in the parsed data .csv file. Currently we can only use one
-    absorbance column, so if you record absorbance at multiple
-    wavelengths (like I do), you will have to pick one.
+-   `od_name` is the name of the column(s) containing our absorbance
+    values in the parsed data .csv file. You can give more than one
+    (e.g. `od_name = c("OD600", "OD700")` if you record absorbance at
+    multiple wavelengths) - all of them get normalised and (if
+    `to_MEFL = TRUE`) calibrated, but the *first* one is always the one
+    used to correct fluorescence for autofluorescence, since that’s fit
+    as a single curve rather than per-wavelength.
 -   `flu_names` are the names of the columns containing our fluorescence
     values. You can include as many or as few of you fluorescence
     columns as you like. Whichever columns are named in here, we will
     attempt to normalise.
+-   `od_calib_names`/`flu_calib_names` only need setting if the
+    calibration run referenced by `conversion_factors_csv` used
+    different column names than this experiment (e.g. this experiment’s
+    OD column is called `"absorbance:600"` but the calibration file’s
+    `measure` column says `"OD600"`) - they default to
+    `od_name`/`flu_names`, so you can leave them out if the naming
+    already matches. Some plate readers can read fluorescence from the
+    top or bottom of a well, which gives different calibration numbers
+    for the same fluorophore - append `" TOP"` to a `flu_calib_names`
+    entry (e.g. `"GFP TOP"`) to use the top-read calibration data
+    instead of the bottom-read default.
 -   `af_model` allows you to choose the type of model that we are going
     to use for fluorescence normalisation. We’ll discuss the available
     choices below.

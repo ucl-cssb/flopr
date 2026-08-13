@@ -65,7 +65,7 @@
         {
           "type": "character",
           "attributes": {},
-          "value": ["strain", "host", "plasmid", "plasmid_2", "strain_2", "media", "sugar", "amino_acids", "inducer", "concentration", "init_ratio", "init_dilution", "well", "time", "OD600", "OD700", "GFP", "mCherry", "row", "column", "normalised_OD", "normalised_GFP", "normalised_mCherry", "calibrated_OD", "calibrated_GFP"]
+          "value": ["strain", "host", "plasmid", "plasmid_2", "strain_2", "media", "sugar", "amino_acids", "inducer", "concentration", "init_ratio", "init_dilution", "well", "time", "OD600", "OD700", "GFP", "mCherry", "row", "column", "normalised_OD700", "normalised_GFP", "normalised_mCherry", "calibrated_OD700", "calibrated_GFP"]
         },
         {
           "type": "double",
@@ -73,7 +73,7 @@
             "names": {
               "type": "character",
               "attributes": {},
-              "value": ["concentration", "init_ratio", "init_dilution", "time", "OD600", "OD700", "GFP", "mCherry", "column", "normalised_OD", "normalised_GFP", "normalised_mCherry", "calibrated_OD", "calibrated_GFP"]
+              "value": ["concentration", "init_ratio", "init_dilution", "time", "OD600", "OD700", "GFP", "mCherry", "column", "normalised_OD700", "normalised_GFP", "normalised_mCherry", "calibrated_OD700", "calibrated_GFP"]
             }
           },
           "value": [0, 432, 61.383, 129937169.28, 343.887, 283.543, 24625314, 5820116, 29952, 196.787, 11394270.493, 4885909.855, 169385799123.42001, 1047470878188852.2]
@@ -84,7 +84,7 @@
             "names": {
               "type": "character",
               "attributes": {},
-              "value": ["concentration", "init_ratio", "init_dilution", "time", "OD600", "OD700", "GFP", "mCherry", "column", "normalised_OD", "normalised_GFP", "normalised_mCherry", "calibrated_OD", "calibrated_GFP"]
+              "value": ["concentration", "init_ratio", "init_dilution", "time", "OD600", "OD700", "GFP", "mCherry", "column", "normalised_OD700", "normalised_GFP", "normalised_mCherry", "calibrated_OD700", "calibrated_GFP"]
             }
           },
           "value": [3600, 3744, 3744, 0, 3600, 3600, 3600, 3600, 0, 3600, 3600, 3600, 3600, 3600]

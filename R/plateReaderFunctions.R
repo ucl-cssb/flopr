@@ -3,8 +3,21 @@
 #' @param data_csv path to a .csv file containing parsed plate reader data
 #' @param blank_well the well coordinates of one or more media blanks
 #' @param neg_well the well coordinates of a non-fluorescent control
-#' @param od_name the column name for the optical density data
+#' @param od_name the column name(s) for the optical density data. Can be a
+#' vector to normalise/calibrate more than one OD reading (e.g. OD600 and
+#' OD700) - the first element is the "primary" OD, the one autofluorescence
+#' correction is modelled against; the others are normalised/calibrated
+#' alongside it but don't affect fluorescence normalisation.
+#' @param od_calib_names the value(s) to match against conversion_factors_csv's
+#' "measure" column, one per \code{od_name} - defaults to \code{od_name}, but
+#' can be set separately when the calibration run used a different raw column
+#' naming convention than this experiment (e.g. this experiment's OD column is
+#' "absorbance:600" but the calibration file's measure is "OD600").
 #' @param flu_names the column names for the fluorescence data
+#' @param flu_calib_names the value(s) to match against conversion_factors_csv's
+#' "fluorophore"/"measure" columns, one per \code{flu_names} - defaults to
+#' \code{flu_names}, but can be set separately for the same reason as
+#' \code{od_calib_names}.
 #' @param af_model model used to fit negative control autofluorescence. One of
 #' "polynomial", "inverse_poly", "exponential", "bi_exponential",
 #' "linear_exponential", "power", "linear_power", "loess" or "spline".
@@ -35,33 +48,45 @@
 #'                 "examples/plate_reader/tecan_spark/191219_calibration_membrane_parsed_cfs.csv")
 #' }
 process_plate <- function(data_csv, blank_well = "A1", neg_well = "A2",
-                          od_name = "OD", flu_names = c("GFP"),
+                          od_name = "OD", od_calib_names = od_name,
+                          flu_names = c("GFP"), flu_calib_names = flu_names,
                           af_model = "spline", to_MEFL = F,
                           flu_gains, conversion_factors_csv) {
 
   pr_data <- utils::read.csv(data_csv, check.names = F)
 
-  od_norm_pr_data <- od_norm(pr_data, blank_well, od_name)
+  # the first od_name is "primary" - the one autofluorescence correction is
+  # modelled against, regardless of how many OD readings are given
+  primary_od_col <- paste0("normalised_", od_name[1])
 
-  plt_od <- ggplot2::ggplot(od_norm_pr_data) +
-    ggplot2::geom_line(ggplot2::aes(x = .data$time, y = .data[[od_name]],
-                                    colour = "raw"), size = 0.2) +
-    ggplot2::geom_line(ggplot2::aes(x = .data$time, y = .data$normalised_OD,
-                                    colour = "normalised"), size = 0.2) +
-    ggplot2::scale_x_continuous("time") +
-    ggplot2::scale_colour_discrete("") +
-    ggplot2::facet_grid(row~column) +
-    ggplot2::theme_bw(base_size = 8)
-  ggplot2::ggsave(filename = gsub(".csv", "_OD.pdf", data_csv),
-                  plot = plt_od, height = 160,
-                  width = 240, units = "mm")
+  od_norm_pr_data <- pr_data
+  for (od_idx in seq_len(length(od_name))) {
+    od_norm_pr_data <- od_norm(od_norm_pr_data, blank_well, od_name[od_idx])
+
+    norm_col <- paste0("normalised_", od_name[od_idx])
+    plt_od <- ggplot2::ggplot(od_norm_pr_data) +
+      ggplot2::geom_line(ggplot2::aes(x = .data$time, y = .data[[od_name[od_idx]]],
+                                      colour = "raw"), size = 0.2) +
+      ggplot2::geom_line(ggplot2::aes(x = .data$time, y = .data[[norm_col]],
+                                      colour = "normalised"), size = 0.2) +
+      ggplot2::scale_x_continuous("time") +
+      ggplot2::scale_colour_discrete("") +
+      ggplot2::facet_grid(row~column) +
+      ggplot2::theme_bw(base_size = 8)
+    ggplot2::ggsave(filename = gsub(".csv",
+                                    paste("_", od_name[od_idx], ".pdf", sep = ""),
+                                    data_csv),
+                    plot = plt_od, height = 160,
+                    width = 240, units = "mm")
+  }
 
   flu_norm_pr_data <- od_norm_pr_data
   if(all(!is.na(flu_names))){
     if(length(flu_names) >= 1){
       for (flu_idx in seq_len(length(flu_names))) {
         flu_norm_pr_data <- flu_norm(flu_norm_pr_data, neg_well, blank_well,
-                                     flu_names[flu_idx], af_model, data_csv)
+                                     flu_names[flu_idx], af_model, data_csv,
+                                     primary_od_col)
 
         plt_flu <- ggplot2::ggplot(flu_norm_pr_data) +
           ggplot2::geom_line(ggplot2::aes(x = .data$time, y = .data[[flu_names[flu_idx]]],
@@ -88,15 +113,19 @@ process_plate <- function(data_csv, blank_well = "A1", neg_well = "A2",
   out_data <- flu_norm_pr_data
 
   if (to_MEFL) {
-    out_data <- calibrate_od(out_data, od_name,
-                             conversion_factors_csv)
+    for (od_idx in seq_len(length(od_name))) {
+      out_data <- calibrate_od(out_data, od_name[od_idx],
+                               conversion_factors_csv,
+                               od_calib_names[od_idx])
+    }
 
     if(all(!is.na(flu_names))){
       for (flu_idx in seq_len(length(flu_names))) {
         if(length(flu_gains) >= flu_idx){
           out_data <- calibrate_flu(out_data, flu_names[flu_idx],
-                                    flu_gains[flu_idx], od_name,
-                                    conversion_factors_csv)
+                                    flu_gains[flu_idx], od_name[1],
+                                    conversion_factors_csv,
+                                    flu_calib_names[flu_idx])
         }
         else {break}
       }
@@ -116,20 +145,22 @@ process_plate <- function(data_csv, blank_well = "A1", neg_well = "A2",
 #' @param blank_well the well coordinates of one or more media blanks
 #' @param od_name the column name for the optical density data
 #'
-#' @return an updated data.frame with an additional column "normalised_OD"
+#' @return an updated data.frame with an additional \code{normalised_<od_name>}
+#' column
 #'
 #' @importFrom dplyr %>%
 #' @importFrom rlang .data
 #' @noRd
 od_norm <- function(pr_data, blank_well, od_name) {
-  pr_data$normalised_OD <- pr_data[, od_name]
+  norm_col <- paste0("normalised_", od_name)
+  pr_data[[norm_col]] <- pr_data[, od_name]
 
   # remove background absorbance signal -------------------------------------
 
   pr_data <- pr_data %>%
     dplyr::group_by(.data$time) %>%
-    dplyr::mutate(normalised_OD = .data$normalised_OD -
-                    mean(.data$normalised_OD[.data$well %in% blank_well]))
+    dplyr::mutate(!!norm_col := .data[[norm_col]] -
+                    mean(.data[[norm_col]][.data$well %in% blank_well]))
 
   return(as.data.frame(pr_data))
 }
@@ -258,6 +289,9 @@ af_models <- list(
 #' "polynomial", "inverse_poly", "exponential", "bi_exponential",
 #' "linear_exponential", "power", "linear_power", "loess" or "spline".
 #' @param data_csv path to the original data. Used for saving normalisation curve plots.
+#' @param primary_od_col the name of the primary OD's \code{normalised_<od_name>}
+#' column - autofluorescence is always modelled against this one OD reading,
+#' even when \code{process_plate()} was given more than one.
 #'
 #' @return an updated data.frame with an additional \code{normalised_<flu_name>}
 #' column
@@ -265,7 +299,11 @@ af_models <- list(
 #' @importFrom dplyr %>%
 #' @importFrom rlang .data
 #' @noRd
-flu_norm <- function(pr_data, neg_well, blank_well, flu_name, af_model, data_csv) {
+flu_norm <- function(pr_data, neg_well, blank_well, flu_name, af_model, data_csv,
+                      primary_od_col) {
+  # alias the primary OD's normalised column to the fixed name every af_model
+  # formula expects - removed again before returning, see below
+  pr_data$normalised_OD <- pr_data[[primary_od_col]]
   pr_data$v1 <- pr_data[, flu_name]
 
   # fit autofluorescence model to negative control --------------------------
@@ -301,6 +339,9 @@ flu_norm <- function(pr_data, neg_well, blank_well, flu_name, af_model, data_csv
   # rename normalised fluorescence column
   names(pr_data)[ncol(pr_data)] <- paste("normalised_", flu_name, sep = "")
 
+  # drop the temporary primary-OD alias so it doesn't leak into the output
+  pr_data$normalised_OD <- NULL
+
   return(pr_data)
 }
 
@@ -310,30 +351,36 @@ flu_norm <- function(pr_data, neg_well, blank_well, flu_name, af_model, data_csv
 #' @param od_name the column name for the optical density data
 #' @param conversion_factors_csv if to_MEFL=T, path of the csv file containing
 #' conversion factors from plate reader calibration
+#' @param od_calib_name the value to match against conversion_factors_csv's
+#' "measure" column - defaults to \code{od_name}, but can be set separately
+#' when the calibration run used a different raw column naming convention
+#' than this experiment.
 #'
 #' @importFrom dplyr %>%
 #' @importFrom rlang .data
 #'
-#' @return an updated data.frame with an additional \code{calibrated_OD} column
+#' @return an updated data.frame with an additional \code{calibrated_<od_name>}
+#' column
 #' @noRd
-calibrate_od <- function(pr_data, od_name, conversion_factors_csv) {
+calibrate_od <- function(pr_data, od_name, conversion_factors_csv, od_calib_name = od_name) {
   conversion_factors <- utils::read.csv(conversion_factors_csv)
 
   # Get conversion factor for OD --------------------------------------------
 
   od_cf <- unlist(conversion_factors %>%
-                    dplyr::filter(.data$measure == od_name) %>%
+                    dplyr::filter(.data$measure == od_calib_name) %>%
                     dplyr::select(.data$cf))
 
   if (length(od_cf) == 0) {
-    stop("No conversion factor found for od_name = \"", od_name, "\" in ",
-         conversion_factors_csv, ". od_name must match one of the values in ",
+    stop("No conversion factor found for od_calib_name = \"", od_calib_name, "\" in ",
+         conversion_factors_csv, ". od_calib_name must match one of the values in ",
          "that file's 'measure' column exactly - check that ",
          "conversion_factors_csv was generated from a calibration run using ",
-         "the same column naming as this experiment's data.", call. = FALSE)
+         "the same column naming as this experiment's data, or pass a ",
+         "matching od_calib_name explicitly.", call. = FALSE)
   }
 
-  pr_data$calibrated_OD <- pr_data$normalised_OD / od_cf
+  pr_data[[paste0("calibrated_", od_name)]] <- pr_data[[paste0("normalised_", od_name)]] / od_cf
 
   return(pr_data)
 }
@@ -347,6 +394,14 @@ calibrate_od <- function(pr_data, od_name, conversion_factors_csv) {
 #' @param od_name the column name for the optical density data
 #' @param conversion_factors_csv if to_MEFL=T, path of the csv file containing
 #' conversion factors from plate reader calibration
+#' @param flu_calib_name the value to match against conversion_factors_csv's
+#' "fluorophore"/"measure" columns - defaults to \code{flu_name}, but can be
+#' set separately when the calibration run used a different raw column
+#' naming convention than this experiment. Some plate readers can read
+#' fluorescence from the top or the bottom of a well, which produces
+#' different calibration numbers - append " TOP" (e.g. \code{"GFP TOP"}) to
+#' select the top-read calibration rows (\code{"GFP 40 TOP"}, etc.) instead
+#' of the bottom-read default.
 #'
 #' @importFrom dplyr %>%
 #' @importFrom rlang .data
@@ -354,21 +409,32 @@ calibrate_od <- function(pr_data, od_name, conversion_factors_csv) {
 #' @return an updated data.frame with an additional \code{calibrated_<flu_name>}
 #' column
 #' @noRd
-calibrate_flu <- function(pr_data, flu_name, flu_gain, od_name, conversion_factors_csv) {
+calibrate_flu <- function(pr_data, flu_name, flu_gain, od_name, conversion_factors_csv,
+                           flu_calib_name = flu_name) {
   conversion_factors <- utils::read.csv(conversion_factors_csv)
 
+  # flu_calib_name may carry a trailing " TOP" to select top-read (rather
+  # than bottom-read, the default) calibration data. The suffix lives at the
+  # END of the measure string ("GFP 40 TOP"), not appended to the
+  # fluorophore name, so it's handled separately from the base name used to
+  # match the "fluorophore" column.
+  is_top <- grepl(" TOP$", flu_calib_name)
+  base_calib_name <- sub(" TOP$", "", flu_calib_name)
+  expected_measure <- paste(base_calib_name, flu_gain)
+  if (is_top) expected_measure <- paste(expected_measure, "TOP")
 
   # Get conversion factor for fluorophore ------------------------------------
   flu_cfs <- conversion_factors %>%
-    dplyr::filter(.data$fluorophore == flu_name)
+    dplyr::filter(.data$fluorophore == base_calib_name,
+                  grepl(" TOP$", .data$measure) == is_top)
 
-  # if there is no calibration for the fluorophore
+  # if there is no calibration for this fluorophore/read-mode combination
   if(nrow(flu_cfs) == 0) {
     return(pr_data)
   }
 
   this_cf <- tryCatch(
-    flu_cfs[which(flu_cfs$measure == paste(flu_name, flu_gain)), ]$cf,
+    flu_cfs[which(flu_cfs$measure == expected_measure), ]$cf,
     error = function(e) NA
   )
   if (length(this_cf) == 0) this_cf <- NA
@@ -376,7 +442,9 @@ calibrate_flu <- function(pr_data, flu_name, flu_gain, od_name, conversion_facto
 
   # if a conversion factor doesn't exist at the measured gain, try a --------
   if(is.na(this_cf)){
-    flu_cfs$gain <- as.numeric(gsub(paste(flu_name, " ", sep=""), "", flu_cfs$measure))
+    flu_cfs$gain <- as.numeric(gsub(" TOP$", "",
+                                     gsub(paste0("^", base_calib_name, " "), "",
+                                          flu_cfs$measure)))
 
     # Fit cf to Gain relation to get cf for specific gain ---------------------
     model <- stats::lm(log10(cf) ~ poly(gain, 2), data = flu_cfs)

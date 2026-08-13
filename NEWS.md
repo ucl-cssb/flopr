@@ -1,3 +1,46 @@
+# flopr 0.6.0
+
+Prompted by a real crash: `process_plate(..., to_MEFL = TRUE)` could fail
+with an opaque `Error in \`$<-.data.frame\`(...): replacement has 0 rows`
+whenever a calibration run's raw column naming didn't match the current
+experiment's - `od_name`/`flu_names` previously had to do double duty as
+both the raw column name *and* the calibration lookup key. This release
+decouples those two roles and adds support for multiple simultaneous OD
+readings (e.g. OD600 and OD700).
+
+## Breaking changes
+
+* All OD output columns now use the same `normalised_<name>`/
+  `calibrated_<name>` pattern fluorescence columns already used, instead of
+  the previous fixed `normalised_OD`/`calibrated_OD` names. **Any script
+  reading those exact column names needs updating** - e.g.
+  `od_name = "OD700"` now produces `normalised_OD700`/`calibrated_OD700`,
+  not `normalised_OD`/`calibrated_OD`. The `_OD.pdf` diagnostic plot
+  filename is similarly now `_<od_name>.pdf` per OD reading.
+
+## New features
+
+* `process_plate()`'s `od_name` can now be a vector, to normalise/calibrate
+  more than one OD reading in a single call (e.g.
+  `od_name = c("OD600", "OD700")`). The first element is always the
+  "primary" OD - the one autofluorescence correction is modelled against -
+  regardless of how many are given; the rest are normalised/calibrated
+  alongside it without affecting fluorescence normalisation.
+* New `od_calib_names`/`flu_calib_names` arguments to `process_plate()`
+  (and `od_calib_name`/`flu_calib_name` on the internal `calibrate_od()`/
+  `calibrate_flu()`) let the calibration lookup key be set independently of
+  the experiment's own raw column name. Both default to the raw name, so
+  nothing changes unless you use them - only needed when
+  `conversion_factors_csv` was generated from a calibration run that used
+  different column naming than this experiment.
+* `flu_calib_name`/`flu_calib_names` can carry a trailing `" TOP"` (e.g.
+  `"GFP TOP"`) to select top-read rather than bottom-read calibration data,
+  for plate readers that support reading fluorescence from either side of
+  the well. Previously `calibrate_flu()`'s gain-interpolation fit blended
+  top-read and bottom-read calibration rows for the same fluorophore
+  together into one curve (or crashed outright, since a `"... TOP"` measure
+  string doesn't parse as a plain gain number) - they're now kept separate.
+
 # flopr 0.5.0
 
 This release follows a full code review of the package. It bundles several
