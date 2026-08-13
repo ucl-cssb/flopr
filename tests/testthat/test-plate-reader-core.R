@@ -71,3 +71,25 @@ test_that("calibrate_flu() uses an exact gain match when available (needs-discus
                         file.path(dir, "191219_calibration_membrane_parsed_cfs.csv"))
   expect_equal(out$calibrated_GFP, 1000 / exact_row$cf)
 })
+
+test_that("calibrate_od() stops with a clear error when od_name has no matching conversion factor", {
+  dir <- local_fixture_copy("tecan_spark")
+  spark_parse(
+    data_file = file.path(dir, "191219_calibration_membrane.csv"),
+    layout_csv = file.path(dir, "calibration_plate_layout.csv"),
+    timeseries = FALSE
+  )
+  generate_cfs(file.path(dir, "191219_calibration_membrane_parsed.csv"))
+
+  # od_name has to match the calibration file's "measure" column exactly -
+  # a calibration_csv generated with a different raw-data column naming
+  # scheme (e.g. a different plate reader protocol) has no matching row,
+  # which used to crash deep inside a data.frame assignment
+  # ("replacement has 0 rows, data has N") instead of failing clearly.
+  pr_data <- data.frame(well = "A1", normalised_OD = 0.5)
+  expect_error(
+    calibrate_od(pr_data, "absorbance:600",
+                 file.path(dir, "191219_calibration_membrane_parsed_cfs.csv")),
+    "No conversion factor found"
+  )
+})

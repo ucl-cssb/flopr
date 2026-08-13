@@ -325,6 +325,14 @@ calibrate_od <- function(pr_data, od_name, conversion_factors_csv) {
                     dplyr::filter(.data$measure == od_name) %>%
                     dplyr::select(.data$cf))
 
+  if (length(od_cf) == 0) {
+    stop("No conversion factor found for od_name = \"", od_name, "\" in ",
+         conversion_factors_csv, ". od_name must match one of the values in ",
+         "that file's 'measure' column exactly - check that ",
+         "conversion_factors_csv was generated from a calibration run using ",
+         "the same column naming as this experiment's data.", call. = FALSE)
+  }
+
   pr_data$calibrated_OD <- pr_data$normalised_OD / od_cf
 
   return(pr_data)
