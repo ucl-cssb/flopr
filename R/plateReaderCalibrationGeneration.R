@@ -194,7 +194,8 @@ generate_cfs <- function(calibration_csv) {
     num_rows <- ceiling(n_facets / facets_per_row)
     plot_width <- 30 * facets_per_row
     plot_height <- 30 * num_rows
-    ggplot2::ggsave(gsub(".csv", paste("_", calib, "_cfs.pdf", sep = ""), calibration_csv), plot = plt,
+    ggplot2::ggsave(gsub(".csv", paste("_", safe_filename_fragment(calib), "_cfs.pdf", sep = ""),
+                        calibration_csv), plot = plt,
                     width = plot_width, height = plot_height, units = "mm")
   }
 

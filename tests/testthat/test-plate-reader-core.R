@@ -192,3 +192,48 @@ test_that("process_plate() normalises/calibrates multiple OD readings without af
   expect_equal(out_single$normalised_GFP, out_multi$normalised_GFP)
   expect_equal(out_single$calibrated_GFP, out_multi$calibrated_GFP)
 })
+
+test_that("process_plate() sanitises od_name/flu_names containing ':' in plot filenames", {
+  # od_name/flu_names containing a colon (a common plate-reader protocol
+  # naming pattern, e.g. "absorbance:600") used to be embedded raw into
+  # ggsave() filenames. On Windows/NTFS a colon marks the start of an
+  # Alternate Data Stream rather than erroring, so the plot silently ended
+  # up in a hidden stream attached to an empty visible file instead of
+  # failing - "empty files instead of plots".
+  dir <- local_fixture_copy("tecan_spark")
+  spark_parse(
+    data_file = file.path(dir, "191219_calibration_membrane.csv"),
+    layout_csv = file.path(dir, "calibration_plate_layout.csv"),
+    timeseries = FALSE
+  )
+  generate_cfs(file.path(dir, "191219_calibration_membrane_parsed.csv"))
+  spark_parse(
+    data_file = file.path(dir, "200228_example_data.csv"),
+    layout_csv = file.path(dir, "200228_example_layout.csv"),
+    timeseries = TRUE
+  )
+
+  data_path <- file.path(dir, "200228_example_data_parsed.csv")
+  parsed <- utils::read.csv(data_path, check.names = FALSE)
+  names(parsed)[names(parsed) == "OD700"] <- "absorbance:700"
+  names(parsed)[names(parsed) == "GFP"] <- "GFP:488,530"
+  utils::write.csv(parsed, data_path, row.names = FALSE)
+
+  process_plate(
+    data_csv = data_path,
+    blank_well = c("C12", "D12"), neg_well = c("C6", "D6", "E6"),
+    od_name = "absorbance:700", flu_names = "GFP:488,530",
+    od_calib_names = "OD700", flu_calib_names = "GFP",
+    af_model = "spline", to_MEFL = TRUE, flu_gains = 135,
+    conversion_factors_csv = file.path(dir, "191219_calibration_membrane_parsed_cfs.csv")
+  )
+
+  od_plot <- file.path(dir, "200228_example_data_parsed_absorbance_700.pdf")
+  flu_plot <- file.path(dir, "200228_example_data_parsed_GFP_488,530.pdf")
+  expect_true(file.exists(od_plot))
+  expect_true(file.exists(flu_plot))
+  # a real plot, not the near-empty file a hidden Alternate Data Stream
+  # would leave behind on Windows
+  expect_gt(file.size(od_plot), 1000)
+  expect_gt(file.size(flu_plot), 1000)
+})

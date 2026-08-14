@@ -1,3 +1,20 @@
+#' Sanitise a string for safe use as a file name
+#'
+#' Raw column names from the plate reader (e.g. \code{"GFP:488,530"}) often
+#' contain characters that are invalid, or have special meaning, in file
+#' names - notably \code{:}, which on Windows/NTFS marks the start of an
+#' Alternate Data Stream rather than erroring, so a naive
+#' \code{ggsave(paste0("_", name, ".pdf"))} silently writes the plot into a
+#' hidden stream attached to an empty visible file instead of failing.
+#'
+#' @param x a character string to sanitise
+#'
+#' @return \code{x} with any of \code{< > : " / \\ | ? *} replaced by "_"
+#' @noRd
+safe_filename_fragment <- function(x) {
+  gsub('[<>:"/\\\\|?*]', "_", x)
+}
+
 #' Plate reader normalisation and calibration
 #'
 #' @param data_csv path to a .csv file containing parsed plate reader data
@@ -74,7 +91,7 @@ process_plate <- function(data_csv, blank_well = "A1", neg_well = "A2",
       ggplot2::facet_grid(row~column) +
       ggplot2::theme_bw(base_size = 8)
     ggplot2::ggsave(filename = gsub(".csv",
-                                    paste("_", od_name[od_idx], ".pdf", sep = ""),
+                                    paste("_", safe_filename_fragment(od_name[od_idx]), ".pdf", sep = ""),
                                     data_csv),
                     plot = plt_od, height = 160,
                     width = 240, units = "mm")
@@ -102,7 +119,7 @@ process_plate <- function(data_csv, blank_well = "A1", neg_well = "A2",
           ggplot2::facet_grid(row~column) +
           ggplot2::theme_bw(base_size = 8)
         ggplot2::ggsave(filename = gsub(".csv",
-                                        paste("_", flu_names[flu_idx], ".pdf", sep = ""),
+                                        paste("_", safe_filename_fragment(flu_names[flu_idx]), ".pdf", sep = ""),
                                         data_csv),
                         plot = plt_flu, height = 160,
                         width = 240, units = "mm")
@@ -328,7 +345,7 @@ flu_norm <- function(pr_data, neg_well, blank_well, flu_name, af_model, data_csv
     ggplot2::scale_y_continuous(flu_name) +
     ggplot2::theme_bw()
   ggplot2::ggsave(filename = gsub(".csv",
-                                  paste("_norm-curve_", flu_name, ".pdf", sep = ""),
+                                  paste("_norm-curve_", safe_filename_fragment(flu_name), ".pdf", sep = ""),
                                   data_csv),
                   plot = plt)
 
@@ -465,7 +482,8 @@ calibrate_flu <- function(pr_data, flu_name, flu_gain, od_name, conversion_facto
                                   trans = "log10") +
       ggplot2::theme_bw()
     ggplot2::ggsave(filename = gsub(".csv",
-                                    paste("_interp-curve_", flu_name, "_", flu_gain, ".pdf", sep = ""),
+                                    paste("_interp-curve_", safe_filename_fragment(flu_name),
+                                          "_", flu_gain, ".pdf", sep = ""),
                                     conversion_factors_csv),
                     plot = plt)
   }
