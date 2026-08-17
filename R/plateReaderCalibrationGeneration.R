@@ -81,14 +81,16 @@ generate_cfs <- function(calibration_csv) {
           }
           else{
             if(top_down){
-              if((i < length(rep_saturated)) & (values[i] <= (values[i+1] * (fold_dilution * 0.75)))){
+              if((i < length(rep_saturated)) && !is.na(values[i+1]) &&
+                 (values[i] <= (values[i+1] * (fold_dilution * 0.75)))){
                 rep_saturated[i] <- 'TOP'
               } else {
                 top_down <- FALSE
               }
             }
             else {
-              if((i > 1) & (values[i] >= (values[i-1] / (fold_dilution * 0.75)))){
+              if((i > 1) && !is.na(values[i-1]) &&
+                 (values[i] >= (values[i-1] / (fold_dilution * 0.75)))){
                 rep_saturated[i] <- 'BOTTOM'
               }
             }

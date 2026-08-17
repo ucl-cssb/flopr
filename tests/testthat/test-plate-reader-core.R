@@ -13,6 +13,37 @@ test_that("generate_cfs() produces conversion factors from Tecan Spark calibrati
   expect_snapshot_value(fingerprint(cfs), style = "json2")
 })
 
+test_that("generate_cfs() doesn't crash when a mid-series reading is NA (a saturated/overflow well with valid readings on both sides)", {
+  # the saturation-classification loop checked values[i] for NA before use,
+  # but not its neighbour (values[i+1] in the top-down branch, values[i-1]
+  # in the bottom-up branch) - if values[i] was valid but the adjacent
+  # dilution point was NA, the comparison evaluated to NA and if(NA) crashed
+  # with "missing value where TRUE/FALSE needed", aborting the whole
+  # function rather than just that one point
+  dir <- local_fixture_copy("tecan_spark")
+  spark_parse(
+    data_file = file.path(dir, "191219_calibration_membrane.csv"),
+    layout_csv = file.path(dir, "calibration_plate_layout.csv"),
+    timeseries = FALSE
+  )
+
+  parsed_path <- file.path(dir, "191219_calibration_membrane_parsed.csv")
+  parsed <- utils::read.csv(parsed_path, check.names = FALSE)
+
+  # pick the well at the second-highest concentration of a dilution series -
+  # a valid reading on both sides once NA'd out
+  rep1 <- parsed[parsed$calibrant == "microspheres" & parsed$replicate == 1, ]
+  rep1 <- rep1[order(-rep1$concentration), ]
+  mid_well <- rep1$well[2]
+  expect_false(is.na(parsed[parsed$well == mid_well, "OD600"]))
+  parsed[parsed$well == mid_well, "OD600"] <- NA
+  utils::write.csv(parsed, parsed_path, row.names = FALSE)
+
+  cfs <- NULL
+  expect_no_error(cfs <- generate_cfs(parsed_path))
+  expect_true(any(cfs$measure == "OD600" & cfs$calibrant == "microspheres"))
+})
+
 test_that("process_plate() handles multi-fluorophore + to_MEFL=TRUE (backlog 004, the README's own example)", {
   dir <- local_fixture_copy("tecan_spark")
 
