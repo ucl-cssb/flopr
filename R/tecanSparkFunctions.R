@@ -38,13 +38,18 @@ spark_parse <- function(data_file, layout_csv, timeseries=T, wells_as_columns=F,
                               header = F,
                               stringsAsFactors = F)
   } else {
-    stop("data_file is must be a .csv, .xls or .xlsx file.")
+    stop("data_file must be a .csv, .xls or .xlsx file.", call. = FALSE)
   }
 
   plate_layout <- utils::read.csv(layout_csv)
 
   if(timeseries == TRUE){
     start_time_idx <- which(data[, 1] == "Start Time")
+    if (length(start_time_idx) == 0) {
+      stop("Could not find a 'Start Time' marker in ", data_csv,
+           " - is this a Tecan Spark timeseries export? ",
+           "(try timeseries = FALSE for single-endpoint data)", call. = FALSE)
+    }
     if (length(start_time_idx) > 1) {
       start_time_idx <- start_time_idx[length(start_time_idx)]
     }
