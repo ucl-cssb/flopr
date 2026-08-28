@@ -482,6 +482,18 @@ get_calibration <-
 
       # find peaks ------------------------------------------------------------
       if (anyNA(manual_peaks)) {
+        ## look up how many peaks are expected for this channel by matching
+        ## channel name - mef_peaks isn't necessarily in the same order as
+        ## peak_channels, so indexing mef_peaks by the peak_channels loop
+        ## index directly can silently pick up a different channel's peaks
+        n_cal_peaks <- NA
+        for (j in seq_len(length(mef_peaks))) {
+          if (mef_peaks[[j]]$channel == peak_channels[i]) {
+            n_cal_peaks <- length(mef_peaks[[j]]$peaks)
+            break
+          }
+        }
+
         ## find peaks based on density estimate
         dens_d <-
           stats::density(log10(singlet_beads@exprs[, peak_channels[i]]),
@@ -490,7 +502,7 @@ get_calibration <-
           data.frame(dens_d[c("x", "y")])[c(F, diff(diff(dens_d$y) >= 0) < 0), ] ## get peaks and heights
         meas_peaks <-
           10 ^ dplyr::top_n(peak_table,
-                            n = length(mef_peaks[[i]]$peaks),
+                            n = n_cal_peaks,
                             wt = .data$y)$x ## select only as many peaks as we have defined
 
         hist_plt <- hist_plt +
