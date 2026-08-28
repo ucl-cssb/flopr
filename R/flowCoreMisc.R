@@ -51,7 +51,7 @@ update_kw_from_pd <- function(fr, new_pd)
 #' Must has column names to be used as new channel names.
 #' @noRd
 cols_to_pd <- function(fr, cols){
-  checkmate::checkClass(cols, "matrix")
+  checkmate::assertClass(cols, "matrix")
   ncol <- ncol(cols)
   cn <- colnames(cols)
   if(length(cn) != ncol)
