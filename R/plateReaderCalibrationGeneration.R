@@ -23,6 +23,12 @@ generate_cfs <- function(calibration_csv) {
   # get types of measure ----------------------------------------------------
   well_idx <- which(names(calibration_data) == "well")
   row_idx <- which(names(calibration_data) == "row")
+  if (length(well_idx) == 0 || length(row_idx) == 0 || well_idx >= row_idx) {
+    stop("Could not find measurement columns between 'well' and 'row' in ",
+         calibration_csv, " - is this a parsed calibration file (the ",
+         "\"<...>_parsed.csv\" output of one of the *_parse() functions)?",
+         call. = FALSE)
+  }
   measures <- names(calibration_data)[(well_idx+1):(row_idx-1)]
 
   long_calibration_data <- tidyr::pivot_longer(calibration_data,
