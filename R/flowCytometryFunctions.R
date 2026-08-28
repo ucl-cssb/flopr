@@ -315,47 +315,29 @@ process_fcs_dir <-
 summarise_data <- function(flow_frame, flu_channels){
   out_data <- c()
 
+  # geometric mean/sd for one channel - warns rather than silently returning
+  # NaN when a channel has no positive values (e.g. everything was trimmed)
+  geo_stats_row <- function(channel){
+    flu_data <- flow_frame[, channel]@exprs[flow_frame[, channel]@exprs > 0]
+    if (length(flu_data) == 0) {
+      warning("No positive values found for channel \"", channel, "\" in ",
+              flowCore::description(flow_frame)$GUID,
+              " - mean/sd will be NaN.", call. = FALSE)
+    }
+    data.frame(file = flowCore::description(flow_frame)$GUID,
+              channel = channel,
+              mean = exp(mean(log(flu_data), na.rm = T)),
+              sd = exp(stats::sd(log(flu_data), na.rm = T)))
+  }
+
   for(flu in flu_channels){
-    flu_data <- flow_frame[,flu]@exprs[flow_frame[,flu]@exprs > 0]
-    geo_mean <- exp(mean(log(flu_data), na.rm = T))
-    geo_sd <- exp(stats::sd(log(flu_data), na.rm = T))
-    new_data <- data.frame(file = flowCore::description(flow_frame)$GUID,
-                           channel = flu,
-                           mean = geo_mean,
-                           sd = geo_sd)
-    out_data <- rbind(out_data, new_data)
+    out_data <- rbind(out_data, geo_stats_row(flu))
 
-    if(paste("normalised_", flu, sep = "") %in% flowCore::colnames(flow_frame)){
-      flu_data <- flow_frame[,paste("normalised_", flu, sep = "")]@exprs[flow_frame[,paste("normalised_", flu, sep = "")]@exprs > 0]
-      geo_mean <- exp(mean(log(flu_data), na.rm = T))
-      geo_sd <- exp(stats::sd(log(flu_data), na.rm = T))
-      new_data <- data.frame(file = flowCore::description(flow_frame)$GUID,
-                             channel = paste("normalised_", flu, sep = ""),
-                             mean = geo_mean,
-                             sd = geo_sd)
-      out_data <- rbind(out_data, new_data)
-    }
-
-    if(paste("calibrated_", flu, sep = "") %in% flowCore::colnames(flow_frame)){
-      flu_data <- flow_frame[,paste("calibrated_", flu, sep = "")]@exprs[flow_frame[,paste("calibrated_", flu, sep = "")]@exprs > 0]
-      geo_mean <- exp(mean(log(flu_data), na.rm = T))
-      geo_sd <- exp(stats::sd(log(flu_data), na.rm = T))
-      new_data <- data.frame(file = flowCore::description(flow_frame)$GUID,
-                             channel = paste("calibrated_", flu, sep = ""),
-                             mean = geo_mean,
-                             sd = geo_sd)
-      out_data <- rbind(out_data, new_data)
-    }
-
-    if(paste("calibrated_normalised_", flu, sep = "") %in% flowCore::colnames(flow_frame)){
-      flu_data <- flow_frame[,paste("calibrated_normalised_", flu, sep = "")]@exprs[flow_frame[,paste("calibrated_normalised_", flu, sep = "")]@exprs > 0]
-      geo_mean <- exp(mean(log(flu_data), na.rm = T))
-      geo_sd <- exp(stats::sd(log(flu_data), na.rm = T))
-      new_data <- data.frame(file = flowCore::description(flow_frame)$GUID,
-                             channel = paste("calibrated_normalised_", flu, sep = ""),
-                             mean = geo_mean,
-                             sd = geo_sd)
-      out_data <- rbind(out_data, new_data)
+    for(prefix in c("normalised_", "calibrated_", "calibrated_normalised_")){
+      channel <- paste0(prefix, flu)
+      if(channel %in% flowCore::colnames(flow_frame)){
+        out_data <- rbind(out_data, geo_stats_row(channel))
+      }
     }
   }
   return(out_data)
