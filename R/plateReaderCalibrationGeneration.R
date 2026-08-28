@@ -140,6 +140,10 @@ generate_cfs <- function(calibration_csv) {
         dplyr::ungroup()
 
       if(nrow(norm_values) < 3){
+        warning("Calibrant \"", calib, "\", measure \"", meas, "\" has only ",
+                nrow(norm_values), " non-saturated value(s) after filtering - ",
+                "at least 3 are needed to fit a conversion factor. Skipping ",
+                "this calibrant/measure combination.", call. = FALSE)
         next
       }
 
@@ -166,6 +170,7 @@ generate_cfs <- function(calibration_csv) {
         return(error)
       }
 
+      converged <- FALSE
       for(init_cf in 10^seq(-8, -16)){
         res <- stats::optim(c(init_cf, 0), error_func)
 
@@ -175,8 +180,17 @@ generate_cfs <- function(calibration_csv) {
                                 fluorophore = norm_values$fluorophore[1],
                                 measure = meas)
           fit_values <- rbind(fit_values, new_fit)
+          converged <- TRUE
           break
         }
+      }
+
+      if(!converged){
+        warning("Failed to fit a conversion factor for calibrant \"", calib,
+                "\", measure \"", meas, "\" - none of the optimiser's starting ",
+                "values converged. Skipping this calibrant/measure combination.",
+                call. = FALSE)
+        next
       }
 
       calib_output <- rbind(calib_output, dplyr::full_join(norm_values, new_fit))
