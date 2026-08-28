@@ -42,7 +42,7 @@ cytation_parse <- function(data_file, layout_csv, timeseries=T, data_csv) {
                               header = F,
                               stringsAsFactors = F)
   } else {
-    stop("data_file is must be a .csv, .xls or .xlsx file.")
+    stop("data_file must be a .csv, .xls or .xlsx file.", call. = FALSE)
   }
 
   plate_layout <- utils::read.csv(layout_csv)
@@ -51,6 +51,11 @@ cytation_parse <- function(data_file, layout_csv, timeseries=T, data_csv) {
 
     # find start of data blocks
     end_kinetic_idx <- which(data[, 1] == "End Kinetic")
+    if (length(end_kinetic_idx) == 0) {
+      stop("Could not find an 'End Kinetic' marker in ", data_csv,
+           " - is this a Biotek Cytation timeseries export? ",
+           "(try timeseries = FALSE for single-endpoint data)", call. = FALSE)
+    }
 
     # find where the next block starts
     next_blank_idx <- next_blank_cell(end_kinetic_idx, data, col=1)
@@ -126,6 +131,11 @@ cytation_parse <- function(data_file, layout_csv, timeseries=T, data_csv) {
   else if (timeseries == FALSE){
     # get start and end block idxs
     start_block_idx <- which(data[, 2] == "Well")
+    if (length(start_block_idx) == 0) {
+      stop("Could not find a 'Well' marker in ", data_csv,
+           " - is this a Biotek Cytation single-endpoint export? ",
+           "(try timeseries = TRUE for timeseries data)", call. = FALSE)
+    }
     end_block_idx <- next_blank_row(start_idx = start_block_idx, data = data)
     if(is.na(end_block_idx)){
       end_block_idx <- nrow(data)
