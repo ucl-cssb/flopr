@@ -31,6 +31,10 @@ biotek_parse <- function(data_xl, layout_csv, timeseries=T) {
 
   if(timeseries == TRUE){
     start_time_idx <- which(data[, 1] == "End Kinetic")
+    if (length(start_time_idx) == 0) {
+      stop("Could not find an 'End Kinetic' marker in ", data_xl,
+           " - is this a Biotek Neo 2 timeseries export?", call. = FALSE)
+    }
 
     next_block_start_idx <- start_time_idx + 2
 
