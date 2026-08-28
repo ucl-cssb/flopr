@@ -469,6 +469,11 @@ calibrate_flu <- function(pr_data, flu_name, flu_gain, od_name, conversion_facto
 
   # if there is no calibration for this fluorophore/read-mode combination
   if(nrow(flu_cfs) == 0) {
+    warning("No conversion factor found for flu_calib_name = \"", flu_calib_name,
+            "\" in ", conversion_factors_csv, " - skipping calibration for \"",
+            flu_name, "\" (no calibrated_", flu_name, " column will be added). ",
+            "Check that conversion_factors_csv has a matching 'fluorophore' entry, ",
+            "or pass a matching flu_calib_name explicitly.", call. = FALSE)
     return(pr_data)
   }
 
