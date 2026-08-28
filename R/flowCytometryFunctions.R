@@ -397,6 +397,16 @@ get_calibration <-
 
     bead_frame <- flowCore::read.FCS(bead_file, emptyValue = F)
 
+    required_channels <- c("FSC-H", "SSC-H", flu_channels)
+    missing_channels <- setdiff(required_channels, flowCore::colnames(bead_frame))
+    if (length(missing_channels) > 0) {
+      stop("The beads .fcs file ", bead_file, " is missing channel(s): ",
+           paste(missing_channels, collapse = ", "),
+           ". flopR expects FSC-H/SSC-H plus each channel in flu_channels ",
+           "to be present - available channels are: ",
+           paste(flowCore::colnames(bead_frame), collapse = ", "), call. = FALSE)
+    }
+
     out_name <- paste(dirname(bead_file),
                       "_processed/",
                       basename(unlist(strsplit(bead_file, split = "[.]"))[1]),
@@ -672,6 +682,16 @@ get_calibration <-
 #' trimmed
 #' @noRd
 prep_flow_frame <- function(flow_frame, flu_channels) {
+  required_channels <- c("FSC-A", "SSC-A", "FSC-H", "SSC-H", flu_channels)
+  missing_channels <- setdiff(required_channels, flowCore::colnames(flow_frame))
+  if (length(missing_channels) > 0) {
+    stop("This .fcs file is missing channel(s): ",
+         paste(missing_channels, collapse = ", "),
+         ". flopR expects FSC-A/SSC-A/FSC-H/SSC-H plus each channel in ",
+         "flu_channels to be present - available channels are: ",
+         paste(flowCore::colnames(flow_frame), collapse = ", "), call. = FALSE)
+  }
+
   # log10 transform the values
   # log10_flow_frame <-
   #   flowCore::transform(flow_frame,
