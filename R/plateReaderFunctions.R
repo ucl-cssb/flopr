@@ -144,7 +144,14 @@ process_plate <- function(data_csv, blank_well = "A1", neg_well = "A2",
                                     conversion_factors_csv,
                                     flu_calib_names[flu_idx])
         }
-        else {break}
+        else {
+          warning("flu_gains has fewer values than flu_names - skipping ",
+                  "calibration for: ",
+                  paste(flu_names[flu_idx:length(flu_names)], collapse = ", "),
+                  ". Pass a gain value for each fluorophore you want calibrated, ",
+                  "or ignore this warning if that was intentional.", call. = FALSE)
+          break
+        }
       }
     }
   }
