@@ -361,7 +361,16 @@ flu_norm <- function(pr_data, neg_well, blank_well, flu_name, af_model, data_csv
     stop("Unknown af_model \"", af_model, "\". Must be one of: ",
          paste(names(af_models), collapse = ", "))
   }
-  model <- model_spec$fit(negative_data)
+  model <- tryCatch(
+    model_spec$fit(negative_data),
+    error = function(e) {
+      stop("Failed to fit af_model = \"", af_model, "\" for flu_name = \"",
+           flu_name, "\" against the negative control(s) ",
+           paste(neg_well, collapse = ", "), ": ", conditionMessage(e),
+           ". Try a different af_model, or check the negative control data ",
+           "for enough distinct, non-degenerate points.", call. = FALSE)
+    }
+  )
 
   # plot model fit curve ------------------------------------------------------
 
