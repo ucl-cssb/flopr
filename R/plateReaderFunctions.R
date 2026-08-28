@@ -169,6 +169,17 @@ process_plate <- function(data_csv, blank_well = "A1", neg_well = "A2",
 #' @importFrom rlang .data
 #' @noRd
 od_norm <- function(pr_data, blank_well, od_name) {
+  if (!od_name %in% names(pr_data)) {
+    stop("od_name = \"", od_name, "\" is not a column in this data - ",
+         "available columns are: ", paste(names(pr_data), collapse = ", "),
+         call. = FALSE)
+  }
+  if (!any(pr_data$well %in% blank_well)) {
+    stop("blank_well (", paste(blank_well, collapse = ", "),
+         ") does not match any well in this data - check for typos, or ",
+         "wells outside this plate's layout.", call. = FALSE)
+  }
+
   norm_col <- paste0("normalised_", od_name)
   pr_data[[norm_col]] <- pr_data[, od_name]
 
@@ -318,6 +329,17 @@ af_models <- list(
 #' @noRd
 flu_norm <- function(pr_data, neg_well, blank_well, flu_name, af_model, data_csv,
                       primary_od_col) {
+  if (!flu_name %in% names(pr_data)) {
+    stop("flu_name = \"", flu_name, "\" is not a column in this data - ",
+         "available columns are: ", paste(names(pr_data), collapse = ", "),
+         call. = FALSE)
+  }
+  if (!any(pr_data$well %in% neg_well)) {
+    stop("neg_well (", paste(neg_well, collapse = ", "),
+         ") does not match any well in this data - check for typos, or ",
+         "wells outside this plate's layout.", call. = FALSE)
+  }
+
   # alias the primary OD's normalised column to the fixed name every af_model
   # formula expects - removed again before returning, see below
   pr_data$normalised_OD <- pr_data[[primary_od_col]]
