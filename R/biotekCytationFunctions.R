@@ -6,7 +6,14 @@
 #' single recording.
 #' @param data_csv deprecated; use \code{data_file} instead.
 #'
-#' @return a data.frame containing the parsed plate reader data
+#' @return a data.frame containing the parsed plate reader data. For
+#' \code{timeseries = TRUE}, \code{time} is the real measured time of each
+#' reading (not rounded or aligned across measurement blocks) and
+#' \code{timepoint} is an integer reading-cycle index (1, 2, 3, ...)
+#' identifying which nominal cycle a row belongs to - use it to match
+#' readings for the same cycle across measurement blocks, since their real
+#' \code{time} values can differ by a few seconds and readings for one
+#' cycle may end up on separate rows.
 #' @export
 #' @importFrom rlang .data
 #' @importFrom dplyr %>%
@@ -73,14 +80,20 @@ cytation_parse <- function(data_file, layout_csv, timeseries=T, data_csv) {
       new_block <- new_block[-1,-c(1,3)]
       names(new_block) <- wells
       names(new_block)[1] <- "time"
+
+      # timepoint is the reading-cycle index within this block (1, 2, 3, ...),
+      # independent of the exact real time each cycle was measured at - lets
+      # readings for the same nominal cycle be matched across measurement
+      # blocks even though their real timestamps differ by a few seconds
+      new_block$timepoint <- seq_len(nrow(new_block))
+
       new_block <- new_block %>%
-        tidyr::pivot_longer(cols = 2:ncol(new_block),
+        tidyr::pivot_longer(cols = 2:(ncol(new_block) - 1),
                             names_to = "well",
                             values_to = "value",
                             values_transform = list(value = as.numeric)) %>%
         dplyr::mutate(time = as.numeric(.data$time),
-                      time = .data$time*24*60*60,
-                      time = round(.data$time/600)*600) # round to nearest 10 minute
+                      time = .data$time*24*60*60)
 
       # add info for each well
       joined_block <- dplyr::full_join(plate_layout, new_block)

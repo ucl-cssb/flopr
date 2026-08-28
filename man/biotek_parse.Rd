@@ -15,7 +15,13 @@ biotek_parse(data_xl, layout_csv, timeseries = T)
 single recording. Currently only works for timeseries=T.}
 }
 \value{
-a data.frame containing the parsed plate reader data
+a data.frame containing the parsed plate reader data. \code{time}
+is the real measured time of each reading (not aligned across
+measurement blocks) and \code{timepoint} is an integer reading-cycle
+index (1, 2, 3, ...) identifying which nominal cycle a row belongs to -
+use it to match readings for the same cycle across measurement blocks,
+since their real \code{time} values can differ by a few seconds and
+readings for one cycle may end up on separate rows.
 }
 \description{
 Parser for Biotek Neo 2 plate reader data

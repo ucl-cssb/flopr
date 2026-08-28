@@ -6,7 +6,9 @@
 #' single recording. The Tecan software outputs the two scenarios differently.
 #' @param data_csv deprecated; use \code{data_file} instead.
 #'
-#' @return a data.frame containing the parsed plate reader data
+#' @return a data.frame containing the parsed plate reader data. For
+#' \code{timeseries = TRUE}, \code{timepoint} is an integer reading-cycle
+#' index (1, 2, 3, ...) identifying which nominal cycle a row belongs to.
 #' @export
 #' @importFrom rlang .data
 #'
@@ -75,11 +77,17 @@ infinite_parse <- function(data_file, layout_csv, timeseries=T, data_csv) {
       names(new_block)[1] <- "well"
       new_block <- new_block[,names(new_block) != "NA"]  # remove erroneous NA columns
 
+      # timepoint is the reading-cycle index within this block (1, 2, 3, ...)
+      # - simply the left-to-right order the time columns appear in
+      timepoint_lookup <- data.frame(time = as.numeric(names(new_block)[-1]),
+                                     timepoint = seq_along(names(new_block)[-1]))
+
       # reshape time into long data
       new_block <- new_block %>%
         tidyr::pivot_longer(cols = 2:ncol(new_block),
                             names_to = "time", names_transform = as.numeric,
-                            values_to = "value", values_transform = as.numeric)
+                            values_to = "value", values_transform = as.numeric) %>%
+        dplyr::left_join(timepoint_lookup, by = "time")
 
       # add info for each well
       joined_block <- dplyr::full_join(plate_layout, new_block)

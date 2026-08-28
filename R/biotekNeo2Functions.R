@@ -5,7 +5,13 @@
 #' @param timeseries Boolean flag indicating whether the data is a timeseries or
 #' single recording. Currently only works for timeseries=T.
 #'
-#' @return a data.frame containing the parsed plate reader data
+#' @return a data.frame containing the parsed plate reader data. \code{time}
+#' is the real measured time of each reading (not aligned across
+#' measurement blocks) and \code{timepoint} is an integer reading-cycle
+#' index (1, 2, 3, ...) identifying which nominal cycle a row belongs to -
+#' use it to match readings for the same cycle across measurement blocks,
+#' since their real \code{time} values can differ by a few seconds and
+#' readings for one cycle may end up on separate rows.
 #' @export
 #' @importFrom rlang .data
 #' @importFrom dplyr %>%
@@ -30,7 +36,6 @@ biotek_parse <- function(data_xl, layout_csv, timeseries=T) {
 
     end_of_file <- F
     all_data <- c()
-    measure_times <- c()
     while (!end_of_file) {
       # find what is being measured
       block_name <- unlist(data[next_block_start_idx, 1])
@@ -58,14 +63,14 @@ biotek_parse <- function(data_xl, layout_csv, timeseries=T) {
       names(trimmed_new_block) <- unlist(wells)
       names(trimmed_new_block)[1] <- "time"
 
-      # hack to unify times of readings across different measurements
-      if(length(measure_times) == 0){
-        measure_times <- trimmed_new_block[1]
-      }
-      trimmed_new_block[1] <- measure_times
+      # timepoint is the reading-cycle index within this block (1, 2, 3, ...),
+      # independent of the exact real time each cycle was measured at - lets
+      # readings for the same nominal cycle be matched across measurement
+      # blocks even though their real timestamps differ by a few seconds
+      trimmed_new_block$timepoint <- seq_len(nrow(trimmed_new_block))
 
       long_trimmed_new_block <- tidyr::pivot_longer(data = trimmed_new_block,
-                                                    cols = 2:ncol(trimmed_new_block),
+                                                    cols = 2:(ncol(trimmed_new_block) - 1),
                                                     names_to = "well")
 
       # add metadata for each well

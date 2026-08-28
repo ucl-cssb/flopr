@@ -60,12 +60,12 @@
         {
           "type": "integer",
           "attributes": {},
-          "value": [4608, 20]
+          "value": [4608, 21]
         },
         {
           "type": "character",
           "attributes": {},
-          "value": ["strain", "host", "plasmid", "plasmid_2", "strain_2", "media", "sugar", "amino_acids", "inducer", "concentration", "init_ratio", "init_dilution", "well", "time", "OD600", "OD700", "GFP", "mCherry", "row", "column"]
+          "value": ["strain", "host", "plasmid", "plasmid_2", "strain_2", "media", "sugar", "amino_acids", "inducer", "concentration", "init_ratio", "init_dilution", "well", "time", "timepoint", "OD600", "OD700", "GFP", "mCherry", "row", "column"]
         },
         {
           "type": "double",
@@ -73,10 +73,10 @@
             "names": {
               "type": "character",
               "attributes": {},
-              "value": ["concentration", "init_ratio", "init_dilution", "time", "OD600", "OD700", "GFP", "mCherry", "column"]
+              "value": ["concentration", "init_ratio", "init_dilution", "time", "timepoint", "OD600", "OD700", "GFP", "mCherry", "column"]
             }
           },
-          "value": [0, 432, 61.383, 129937169.28, 343.887, 283.543, 24625314, 5820116, 29952]
+          "value": [0, 432, 61.383, 129937169.28, 112896, 343.887, 283.543, 24625314, 5820116, 29952]
         },
         {
           "type": "integer",
@@ -84,10 +84,10 @@
             "names": {
               "type": "character",
               "attributes": {},
-              "value": ["concentration", "init_ratio", "init_dilution", "time", "OD600", "OD700", "GFP", "mCherry", "column"]
+              "value": ["concentration", "init_ratio", "init_dilution", "time", "timepoint", "OD600", "OD700", "GFP", "mCherry", "column"]
             }
           },
-          "value": [3600, 3744, 3744, 0, 3600, 3600, 3600, 3600, 0]
+          "value": [3600, 3744, 3744, 0, 0, 3600, 3600, 3600, 3600, 0]
         }
       ]
     }

@@ -1,3 +1,35 @@
+# flopr 0.7.0
+
+All four instrument parsers (`cytation_parse()`, `biotek_parse()`,
+`spark_parse()`, `infinite_parse()`) now report the real, unmodified
+measurement time for every reading, and add a new `timepoint` column - an
+integer reading-cycle index (1, 2, 3, ...) that identifies which nominal
+cycle a row belongs to, independent of the exact real time it was measured
+at.
+
+## Breaking changes
+
+* `cytation_parse()` no longer rounds `time` to the nearest 10 minutes.
+  This rounding existed purely to force different measurement blocks (e.g.
+  OD and GFP, read a few seconds apart) to line up into one combined row.
+  Now the parser reports each block's real measured time as-is, even
+  though that means readings for the same nominal cycle can end up on
+  separate rows (one row per block, with `NA` in the other blocks'
+  columns) instead of being merged into a single row. Use the new
+  `timepoint` column to match readings for the same cycle across blocks;
+  round or average `time` yourself if you want a single combined row per
+  cycle.
+* `biotek_parse()` had a similar (more aggressive) hack: every measurement
+  block after the first had its real timestamps silently overwritten with
+  the first block's timestamps, purely to force blocks to merge. This is
+  removed for the same reason and with the same consequence - real,
+  unmerged per-block times, with `timepoint` available to match cycles
+  across blocks.
+* `spark_parse()` and `infinite_parse()` did not round or fudge time (Tecan
+  instruments already timestamp all channels in a cycle identically), so
+  this is purely additive for them: a new `timepoint` column, with all
+  other columns and values unchanged.
+
 # flopr 0.6.0
 
 Prompted by a real crash: `process_plate(..., to_MEFL = TRUE)` could fail

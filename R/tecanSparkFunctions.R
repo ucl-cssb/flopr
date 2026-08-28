@@ -8,7 +8,9 @@
 #' oriented with wells as columns or rows
 #' @param data_csv deprecated; use \code{data_file} instead.
 #'
-#' @return a data.frame containing the parsed plate reader data
+#' @return a data.frame containing the parsed plate reader data. For
+#' \code{timeseries = TRUE}, \code{timepoint} is an integer reading-cycle
+#' index (1, 2, 3, ...) identifying which nominal cycle a row belongs to.
 #' @export
 #' @importFrom rlang .data
 #'
@@ -76,19 +78,30 @@ spark_parse <- function(data_file, layout_csv, timeseries=T, wells_as_columns=F,
         new_block <- new_block[-c(1:3), ]
         names(new_block) <- times
         names(new_block)[1] <- "well"
+
+        # timepoint is the reading-cycle index within this block (1, 2, 3, ...)
+        # - simply the left-to-right order the time columns appear in
+        timepoint_lookup <- data.frame(time = as.numeric(names(new_block)[-1]),
+                                       timepoint = seq_along(names(new_block)[-1]))
+
         new_block <- new_block %>%
           tidyr::pivot_longer(cols = 2:ncol(new_block),
                               names_to = "time",
                               values_to = "value",
                               values_transform = list(value = as.numeric)) %>%
-          dplyr::mutate(time = as.numeric(.data$time))
+          dplyr::mutate(time = as.numeric(.data$time)) %>%
+          dplyr::left_join(timepoint_lookup, by = "time")
       } else if(wells_as_columns){
         wells <- new_block[1, -c(1,3)]
         new_block <- new_block[-1,-c(1,3)]
         names(new_block) <- wells
         names(new_block)[1] <- "time"
+
+        # timepoint is the reading-cycle index within this block (1, 2, 3, ...)
+        new_block$timepoint <- seq_len(nrow(new_block))
+
         new_block <- new_block %>%
-          tidyr::pivot_longer(cols = 2:ncol(new_block),
+          tidyr::pivot_longer(cols = 2:(ncol(new_block) - 1),
                               names_to = "well",
                               values_to = "value",
                               values_transform = list(value = as.numeric)) %>%

@@ -26,7 +26,9 @@ oriented with wells as columns or rows}
 \item{data_csv}{deprecated; use \code{data_file} instead.}
 }
 \value{
-a data.frame containing the parsed plate reader data
+a data.frame containing the parsed plate reader data. For
+\code{timeseries = TRUE}, \code{timepoint} is an integer reading-cycle
+index (1, 2, 3, ...) identifying which nominal cycle a row belongs to.
 }
 \description{
 Parser for Tecan Spark plate reader data
