@@ -165,6 +165,16 @@ process_fcs_dir <-
                         mef_peaks,
                         manual_peaks,
                         bead_dens_bw)
+
+      missing_calib_channels <- setdiff(flu_channels, calibration_parameters$flu)
+      if (length(missing_calib_channels) > 0) {
+        warning("No calibration parameters were fitted for channel(s): ",
+                paste(missing_calib_channels, collapse = ", "),
+                " - these will not be converted to MEF units. Check that ",
+                "mef_peaks/manual_peaks include a matching entry for each ",
+                "channel in flu_channels, and that enough valid bead peaks ",
+                "were found for it.", call. = FALSE)
+      }
     }
 
     neg_control_available <- !is.na(neg_fcs)
