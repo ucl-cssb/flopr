@@ -561,7 +561,10 @@ get_calibration <-
 
       ## flowCal model: log(calibrated + mef_auto) = m * log(measured) + b
       model <- NA
-      while(anyNA(model)){
+      max_attempts <- 100
+      attempt <- 0
+      while(anyNA(model) && attempt < max_attempts){
+        attempt <- attempt + 1
         try(model <-
               stats::nls(log(calibrated) ~ log(exp(b) * measured ^ m - mef_auto),
                          data = valid_peaks,
@@ -570,9 +573,13 @@ get_calibration <-
                            b = stats::runif(1, min = -1, max = 1),
                            mef_auto = stats::runif(1, min = -1e3, max = 1e3)
                          )), silent = T)
-        # if(!is.na(model)){
-        #   break
-        # }
+      }
+      if(anyNA(model)){
+        stop("Failed to fit MEF calibration curve for channel \"", peak_channels[i],
+             "\" after ", max_attempts, " attempts. Check that the bead peak data ",
+             "and mef_peaks/manual_peaks values for this channel are correct - ",
+             "too few valid peaks or badly separated peaks can prevent this model ",
+             "from converging.", call. = FALSE)
       }
 
       calibration_parameters <- rbind(
