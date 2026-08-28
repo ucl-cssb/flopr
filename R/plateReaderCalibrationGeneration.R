@@ -62,6 +62,14 @@ generate_cfs <- function(calibration_csv) {
       # get concentrations at which we have measurements
       concentrations <- sort(unique(temp_calib_meas_values$concentration), decreasing = T)
 
+      if (length(concentrations) < 3) {
+        warning("Calibrant \"", calib, "\", measure \"", meas, "\" has only ",
+                length(concentrations), " distinct concentration(s) - at least ",
+                "3 are needed to compute a fold-dilution. Skipping this ",
+                "calibrant/measure combination.", call. = FALSE)
+        next
+      }
+
       # calculate fold dilution used
       fold_dilution <- concentrations[2] / concentrations[3]
 
